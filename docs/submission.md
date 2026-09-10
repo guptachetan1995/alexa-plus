@@ -99,16 +99,23 @@ sequencing and the policy reasoning; the person keeps the decision.
 
 ### AWS services and technologies used
 
-**In progress (revised 2026-09-10, see [issue #32](https://github.com/guptachetan1995/hackathons-2026/issues/32)):** the AWS Builder mini-challenge IS being claimed. **Amazon
-Bedrock** (Converse API tool-use loop) is being added as an optional planner
-(`PLANNER=bedrock`, [#122](https://github.com/guptachetan1995/hackathons-2026/issues/122)) — it replaces the scripted planner's turn selection with real
-model reasoning, while every tool call still routes through the same MCP client
-chokepoint and every proposal still requires the same human confirm gate. The MCP
-server itself is being deployed on **AWS App Runner** ([#123](https://github.com/guptachetan1995/hackathons-2026/issues/123)/[#124](https://github.com/guptachetan1995/hackathons-2026/issues/124)) to close the
-track's "remote URL" requirement at the same time.
-`[owner]` Replace this paragraph with the final, verified write-up once #122–#124 are
-done and the Bedrock integration has been confirmed working against real credentials —
-never claim this is done before it's genuinely running.
+**Claimed and verified (2026-09-11, see [issue #32](https://github.com/guptachetan1995/hackathons-2026/issues/32)/[#124](https://github.com/guptachetan1995/hackathons-2026/issues/124)):** the AWS Builder mini-challenge is claimed. Two AWS services are actually
+incorporated:
+
+- **Amazon Bedrock** (Converse API, tool-use loop) as an optional planner
+  (`PLANNER=bedrock`, [#122](https://github.com/guptachetan1995/hackathons-2026/issues/122)), model `amazon.nova-micro-v1:0` in `ap-southeast-2` — it replaces the
+  scripted planner's turn selection with real model reasoning, while every tool call
+  still routes through the same MCP client chokepoint and every proposal still requires
+  the same human confirm gate; the model has no path to mint its own confirmation token.
+  Proven against real AWS, not just mocked: a live `ConverseCommand` call from AWS
+  CloudShell, using that environment's own ambient credentials, returned a genuine
+  tool-use decision (`list_devices`) with `HTTP 200` — the same call shape
+  `client/server.js`'s `POST /bedrock/converse` route makes.
+- **AWS EC2** hosts the MCP server itself at a real, public, judge-testable URL:
+  `http://16.176.3.215:3000/mcp` (`t3.micro`, Amazon Linux 2023, `ap-southeast-2`),
+  verified with a real `initialize` handshake returning `HTTP 200`. (AWS App Runner —
+  the original plan in [#123](https://github.com/guptachetan1995/hackathons-2026/issues/123) — turned out to need an AWS Organizations "all features"
+  migration this account hasn't made; EC2 was the deploy path that didn't need it.)
 
 Technologies used are listed under [Built with](#built-with).
 
@@ -158,7 +165,7 @@ Versions are pinned in `../package.json` and `../client/package.json`:
 | Mini-challenge | Selected | Why |
 |---|---|---|
 | **Open Source** | **Yes** | New MIT-licensed project created inside the submission window. |
-| **AWS Builder** | **Yes (in progress)** | Amazon Bedrock planner (#122) + App Runner hosting (#123/#124). Revised 2026-09-10, see #32. |
+| **AWS Builder** | **Yes** | Amazon Bedrock planner (#122), proven live via CloudShell with real credentials, plus AWS EC2 hosting for the MCP server (#124). Revised 2026-09-10, see #32; verified 2026-09-11. |
 
 Both decisions are recorded as binding in `../SPEC.md` §9.
 
@@ -168,17 +175,19 @@ The live form's exact prompt: *"AWS Builder Mini Challenge Submission Requiremen
 Which AWS services did you incorporate and how? If no description/write up provided,
 you will not be considered for the AWS Builder Mini Challenge."*
 
-`[owner]` Do not paste anything here until #122–#124 are done and verified against real
-Bedrock credentials — see the [AWS services and technologies used](#aws-services-and-technologies-used)
-section above for what this will say once it's true. Draft, once real:
+Final answer, pasted into the live Devpost submission 2026-09-11:
 
-> Amazon Bedrock (Converse API) powers an optional planner (`PLANNER=bedrock`) that
+> Two AWS services power this entry. **Amazon Bedrock** (Converse API, tool-use loop,
+> model `amazon.nova-micro-v1:0`) is an optional planner (`PLANNER=bedrock`) that
 > replaces the scripted demo's fixed turn sequence with real model reasoning: given the
 > user's request and the MCP server's tool schemas, it decides which tool to call and
 > when to propose an action — but every execution still requires the same human
 > confirmation gate the scripted planner uses, and the model has no path to mint a
-> confirmation token itself. The MCP server is deployed on AWS App Runner for a public,
-> judge-testable remote URL.
+> confirmation token itself. Proven against real AWS: a live Converse call from AWS
+> CloudShell, using that environment's own credentials, returned a genuine tool-use
+> decision (HTTP 200). **AWS EC2** hosts the MCP server itself at a real, public,
+> judge-testable URL (`http://16.176.3.215:3000/mcp`, `t3.micro`, Amazon Linux 2023,
+> `ap-southeast-2`), verified with a real MCP `initialize` handshake returning HTTP 200.
 
 ### Open Source mini-challenge — required fields
 
