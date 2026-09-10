@@ -42,7 +42,13 @@ function createApp({
   audit = new AuditLog(),
   proposals = new ProposalStore(),
 } = {}) {
-  const app = createMcpExpressApp();
+  // createMcpExpressApp()'s own DNS-rebinding Host check — not the
+  // StreamableHTTPServerTransport below — is what enforces localhost-only by
+  // default (via its `host` option, independent of what this process actually
+  // binds to). `host: '0.0.0.0'` opts out of that automatic allowlist, the same
+  // tradeoff already made for CORS: no auth, no origin allowlist, so this one
+  // check wasn't real protection — just this SDK helper's localhost default (#124).
+  const app = createMcpExpressApp({ host: '0.0.0.0' });
 
   // The simulated Alexa+ client (issue #35) runs on its own origin/port and talks to
   // this server only over HTTP, so cross-origin fetches need explicit CORS — including
@@ -76,11 +82,6 @@ function createApp({
         transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID(),
           enableJsonResponse: true,
-          // Same tradeoff already made for CORS below: this demo has no auth and no
-          // origin allowlist, so rejecting only the Host header while leaving every
-          // other check open added no real protection — it just made a deployed
-          // instance unreachable by its own public IP/DNS (#124).
-          enableDnsRebindingProtection: false,
           onsessioninitialized: (newSessionId) => {
             transports[newSessionId] = transport;
           },
