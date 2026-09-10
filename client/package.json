@@ -1,0 +1,15 @@
+{
+  "name": "alexa-plus-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Simulated Alexa+ web client for the alexa-plus MCP server — no build step, talks to the server only over Streamable HTTP.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  }
+}

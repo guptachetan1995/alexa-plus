@@ -1,0 +1,70 @@
+[
+  {
+    "device_id": "dev_living_room_light_1",
+    "name": "Living Room Overhead",
+    "type": "light",
+    "room": "living room",
+    "state": {
+      "power": "on",
+      "brightness": 100,
+      "color_temp_k": 4000
+    },
+    "capabilities": ["power", "brightness", "color_temp"],
+    "supported_actions": ["turn_on", "turn_off", "set_brightness", "set_color_temp"],
+    "last_updated": "2026-09-08T08:00:00Z"
+  },
+  {
+    "device_id": "dev_bedroom_light_1",
+    "name": "Bedroom Lamp",
+    "type": "light",
+    "room": "bedroom",
+    "state": {
+      "power": "off",
+      "brightness": 0,
+      "color_temp_k": 3000
+    },
+    "capabilities": ["power", "brightness", "color_temp"],
+    "supported_actions": ["turn_on", "turn_off", "set_brightness", "set_color_temp"],
+    "last_updated": "2026-09-08T08:00:00Z"
+  },
+  {
+    "device_id": "dev_thermostat_1",
+    "name": "Living Room Thermostat",
+    "type": "thermostat",
+    "room": "living room",
+    "state": {
+      "power": "on",
+      "mode": "heat",
+      "target_temp_f": 70,
+      "current_temp_f": 68
+    },
+    "capabilities": ["power", "target_temp", "mode"],
+    "supported_actions": ["turn_on", "turn_off", "set_target_temp", "set_mode"],
+    "last_updated": "2026-09-08T08:00:00Z"
+  },
+  {
+    "device_id": "dev_front_door_lock_1",
+    "name": "Front Door Lock",
+    "type": "lock",
+    "room": "living room",
+    "state": {
+      "locked": true,
+      "battery_pct": 82
+    },
+    "capabilities": ["lock", "battery"],
+    "supported_actions": ["lock", "unlock"],
+    "last_updated": "2026-09-08T08:00:00Z"
+  },
+  {
+    "device_id": "dev_kitchen_plug_1",
+    "name": "Kitchen Coffee Maker Plug",
+    "type": "plug",
+    "room": "kitchen",
+    "state": {
+      "power": "off"
+    },
+    "capabilities": ["power"],
+    "supported_actions": ["turn_on", "turn_off"],
+    "last_updated": "2026-09-08T08:00:00Z"
+  }
+]
