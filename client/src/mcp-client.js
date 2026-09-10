@@ -32,6 +32,11 @@ export class McpHttpClient {
     return this._request('tools/call', { name, arguments: args });
   }
 
+  /** Calls tools/list once; returns the server's ListToolsResult ({tools: [...]}) unmodified. Call after initialize(). */
+  async listTools() {
+    return this._request('tools/list', {});
+  }
+
   /** Ends the session (DELETE per the transport spec). Safe to call without a session. */
   async close() {
     if (!this.sessionId) return;

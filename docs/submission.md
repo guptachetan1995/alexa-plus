@@ -99,10 +99,16 @@ sequencing and the policy reasoning; the person keeps the decision.
 
 ### AWS services and technologies used
 
-**No AWS services are used.** The simulated smart home is entirely in memory; nothing
-calls Bedrock, AgentCore, SageMaker, Lambda, or any other AWS service. The AWS Builder
-mini-challenge is therefore **not** claimed. This is recorded as a binding decision in
-`../SPEC.md` §9.
+**In progress (revised 2026-09-10, see [issue #32](https://github.com/guptachetan1995/hackathons-2026/issues/32)):** the AWS Builder mini-challenge IS being claimed. **Amazon
+Bedrock** (Converse API tool-use loop) is being added as an optional planner
+(`PLANNER=bedrock`, [#122](https://github.com/guptachetan1995/hackathons-2026/issues/122)) — it replaces the scripted planner's turn selection with real
+model reasoning, while every tool call still routes through the same MCP client
+chokepoint and every proposal still requires the same human confirm gate. The MCP
+server itself is being deployed on **AWS App Runner** ([#123](https://github.com/guptachetan1995/hackathons-2026/issues/123)/[#124](https://github.com/guptachetan1995/hackathons-2026/issues/124)) to close the
+track's "remote URL" requirement at the same time.
+`[owner]` Replace this paragraph with the final, verified write-up once #122–#124 are
+done and the Bedrock integration has been confirmed working against real credentials —
+never claim this is done before it's genuinely running.
 
 Technologies used are listed under [Built with](#built-with).
 
@@ -152,9 +158,27 @@ Versions are pinned in `../package.json` and `../client/package.json`:
 | Mini-challenge | Selected | Why |
 |---|---|---|
 | **Open Source** | **Yes** | New MIT-licensed project created inside the submission window. |
-| **AWS Builder** | No | No AWS service is used anywhere in this entry. |
+| **AWS Builder** | **Yes (in progress)** | Amazon Bedrock planner (#122) + App Runner hosting (#123/#124). Revised 2026-09-10, see #32. |
 
 Both decisions are recorded as binding in `../SPEC.md` §9.
+
+### AWS Builder mini-challenge — required field
+
+The live form's exact prompt: *"AWS Builder Mini Challenge Submission Requirement:
+Which AWS services did you incorporate and how? If no description/write up provided,
+you will not be considered for the AWS Builder Mini Challenge."*
+
+`[owner]` Do not paste anything here until #122–#124 are done and verified against real
+Bedrock credentials — see the [AWS services and technologies used](#aws-services-and-technologies-used)
+section above for what this will say once it's true. Draft, once real:
+
+> Amazon Bedrock (Converse API) powers an optional planner (`PLANNER=bedrock`) that
+> replaces the scripted demo's fixed turn sequence with real model reasoning: given the
+> user's request and the MCP server's tool schemas, it decides which tool to call and
+> when to propose an action — but every execution still requires the same human
+> confirmation gate the scripted planner uses, and the model has no path to mint a
+> confirmation token itself. The MCP server is deployed on AWS App Runner for a public,
+> judge-testable remote URL.
 
 ### Open Source mini-challenge — required fields
 
@@ -346,11 +370,11 @@ line is ticked on assertion alone.
 
 | # | Checklist line | Status | Evidence |
 |---|---|---|---|
-| 1 | Text description explaining functionality, use case, and any AWS services/technologies used | **Ready** | [Text description](#text-description) above, including the explicit "no AWS services" statement. |
+| 1 | Text description explaining functionality, use case, and any AWS services/technologies used | **In progress** | [AWS services used](#aws-services-and-technologies-used) above — Bedrock planner (#122) + App Runner hosting (#123/#124) not yet built; do not submit the final write-up until they're real. |
 | 2 | Public GitHub repository with source code and open-source license | **Owner** | Both LICENSE files present and MIT (`LICENSE` at repo root, `entries/alexa-plus/LICENSE`); `verify.sh` asserts the entry LICENSE begins `MIT License`. Repo is currently private — making it public is the owner's step. |
 | 3 | Demo video approximately 3 minutes, public on YouTube/Vimeo | **Owner** | [`video-script.md`](video-script.md): 9 scenes, verbatim narration, 2:25 scripted / 2:42 ceiling. Recording and upload are the owner's step. |
 | 4 | Product feedback on all tools and APIs used (graded) | **Done** | [`feedback.md`](feedback.md) — 10 dependencies, each with what-for / worked / needs-work / onboarding / build-again. |
-| 5 | Track and mini-challenge selections | **Ready** | Alexa+; Open Source yes, AWS Builder no. Pinned in `../SPEC.md` §9, restated above with the four required Open Source fields. |
+| 5 | Track and mini-challenge selections | **In progress** | Alexa+; Open Source yes, AWS Builder **yes** (revised 2026-09-10, see #32). Pinned in `../SPEC.md` §9, restated above with the four required Open Source fields. |
 | 6 | Documentation of any pre-hackathon work | **Done** | [Pre-existing project disclosure](#pre-existing-project-disclosure) — none, with the git commands that prove it. |
 
 ### Track-Specific Requirements (Alexa+)

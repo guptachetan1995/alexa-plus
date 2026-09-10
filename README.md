@@ -90,10 +90,10 @@ will pause twice with a "Confirmation needed" panel — click **Confirm** the fi
 in the tool panel below) and **Decline** the second time (turning off the kitchen plug
 — the agent narrates that it left it alone, and the plug's state never changes).
 
-`client/` has no npm dependencies at all (React loads from a CDN import map in
-`index.html`, so there is no bundler or build step) — `npm install` there is a no-op,
-kept only so "one command each" (`npm install && npm start`) works identically for
-server and client.
+`client/` still has no bundler or build step — React loads from a CDN import map in
+`index.html`. It does have one real npm dependency now, `@aws-sdk/client-bedrock-runtime`
+(#122, see "PLANNER=bedrock" below), so `npm install` there does real work; "one command
+each" (`npm install && npm start`) still works identically for server and client.
 
 To run the client's own integration test (spawns the real server as a separate process
 and drives the full script against it over HTTP, including a scripted confirm and a
@@ -102,6 +102,58 @@ scripted decline):
 ```bash
 cd client && npm test
 ```
+
+## PLANNER=bedrock — the Bedrock tool-use-loop planner (#122)
+
+The scripted planner above is the default and needs no LLM. An alternative planner lets
+a real model (Amazon Bedrock's Converse API, tool-use loop) choose which tools to call
+and in what order, instead of walking a fixed script — set it when starting the client:
+
+```bash
+PLANNER=bedrock AWS_REGION=ap-southeast-2 BEDROCK_MODEL_ID=amazon.nova-micro-v1:0 npm start
+```
+
+All three env vars are optional (defaults shown above — `AWS_REGION` defaults to
+`ap-southeast-2`, `BEDROCK_MODEL_ID` to `amazon.nova-micro-v1:0`, the cheapest Bedrock
+model confirmed to support Converse tool-use as of 2026-09-10 — see SPEC.md section 10).
+`client/server.js` reads all three once at startup, but only `PLANNER` and
+`BEDROCK_MODEL_ID` get templated into `window.__ALEXA_PLUS_CONFIG__` in the served HTML
+(`app.js` reads that global and dynamically imports `client/src/bedrock-planner.js` only
+when `planner: 'bedrock'`). `AWS_REGION` is deliberately not templated (#130) — it only
+matters to the real `BedrockRuntimeClient` `server.js` constructs for itself, and the
+browser no longer constructs one at all.
+
+What does **not** change: **no AWS credentials are ever read, embedded, or reachable by
+browser-served code.** The browser never constructs an AWS SDK client at all — it POSTs
+the Converse request to this same origin's `POST /bedrock/converse` (`client/server.js`),
+which is the one place `BedrockRuntimeClient` is actually constructed, under Node, where
+the AWS SDK's standard credential chain (environment variables, `~/.aws/credentials`,
+IMDS) can resolve safely. Every tool call the model makes still goes through the exact
+same `mcpClient.callTool()` chokepoint the scripted planner and the UI use, and every
+proposed action still has to pass through the exact same human Confirm/Decline gate to
+get a `confirmation_id` — the model can reason about anything, but it can never mint its
+own token, redirect an execution to a different device/action than what was actually
+proposed and confirmed, replay a token, or clobber one pending proposal with another when
+two are in flight at once (see `client/src/bedrock-planner.js`'s header comment for
+exactly how that's enforced). `npm test` needs no LLM key and makes no network call to
+AWS: `client/test/bedrock-planner.test.js` and `client/test/bedrock-proxy-route.test.js`
+both drive the loop and the proxy route respectively against a mocked `bedrockClient`
+returning scripted Converse-shaped responses.
+
+**Live browser execution works (#130, corrected 2026-09-11).** An earlier version of
+this section documented the opposite as a "known, deliberate gap" — that was true at the
+time (the browser tried to construct `BedrockRuntimeClient` itself, which cannot resolve
+credentials and cannot even resolve the SDK's import without a bundler) but was never
+actually verified live until #130 opened this client in a real browser tab and watched it
+fail exactly that way. The fix moved the AWS call server-side; a real click-through now
+gets as far as a real AWS SDK error (e.g. `Could not load credentials from any
+providers`, in this environment, which has no local AWS credentials configured)
+delivered cleanly through the UI's normal error path, not a browser crash. Getting an
+actual model response additionally needs the machine running `npm start` in `client/` to
+have real AWS credentials available to the Node process (local `~/.aws/credentials` /
+env vars in dev, an IAM role if this process is ever deployed) — nothing about that is
+new to this goal, it is just where the existing "no AWS credentials in this repo" limit
+now actually lives.
 
 ## Inspecting with an off-the-shelf MCP client
 
@@ -202,7 +254,9 @@ Stated plainly, because a submission that hides these is worse than one that nam
 
 - **Not deployed.** The server is run locally and has no public URL. Measured
   `tools/call` round-trip on loopback is 0.62–1.17 ms, so the latency budget is not the
-  obstacle — hosting simply is not part of this entry.
+  obstacle — hosting simply is not part of this entry. Deployment artifacts and the
+  runbook are ready ([docs/deploy.md](docs/deploy.md)); running them against real AWS is
+  tracked in #124.
 - **No authentication.** OAuth 2.1 with PKCE is not implemented (`SPEC.md` section 7
   records `auth.js` as deferred). The server requires no credentials, so nothing is
   gated behind an auth path that does not exist — but a real Alexa+ add-on would need it.
@@ -229,12 +283,26 @@ Stated plainly, because a submission that hides these is worse than one that nam
 - **No personal data, anywhere.** The five devices in `server/data/devices.json` are
   fictional, in a fictional house. No real address, account, network identifier or person
   appears in any source file, test, or fixture.
-- **No credentials.** Nothing reads an API key, token, or password; there is no `.env`,
-  no secret store, and no authentication path. Nothing to leak because nothing is held.
-- **No outbound network calls.** Every tool resolves against the in-memory registry. The
-  server contacts no device, vendor API, or third-party service. The only external fetch
-  anywhere is the browser loading React from a CDN via the import map in
-  `client/index.html`.
+- **No credentials, with one scoped exception.** The MCP server, the scripted planner,
+  and every device/proposal/audit tool read no API key, token, or password — there is no
+  `.env`, no secret store, no authentication path for any of that. The exception is
+  `PLANNER=bedrock` (#130): `client/server.js`'s `POST /bedrock/converse` resolves an AWS
+  credential the normal Node way (local `~/.aws/credentials` / env vars in dev, an IAM
+  role if ever deployed) to call Bedrock. That credential is held only in that Node
+  process's own environment, is never logged, written to disk, or echoed in any
+  response, and — the property that actually matters here — is structurally unreachable
+  from browser-served code: the browser only ever POSTs a Converse request and reads back
+  its JSON result, the same origin, no credential in either direction. `/bedrock/converse`
+  has no origin check, auth, or rate limit of its own (matching every other route on this
+  server, none of which needed one for a same-machine demo) — the one difference is that
+  this route is a real, metered AWS call, so that tradeoff is worth naming rather than
+  leaving implicit if this process is ever reachable from anywhere but localhost.
+- **No outbound network calls, with the same exception.** Every tool resolves against the
+  in-memory registry; the server contacts no device, vendor API, or third-party service.
+  The browser's only external fetch is loading React from a CDN via the import map in
+  `client/index.html`. Under `PLANNER=bedrock`, `client/server.js` additionally makes one
+  outbound call per conversation turn to Amazon Bedrock — the one deliberate exception,
+  and never anything else.
 - **Authorization is structural, not advisory.** `ProposalStore.approve()` is the only
   code that ever mints a `confirmation_token`, and its only caller is the owner-only
   `POST /proposals/:id/approve` route. No MCP tool wraps it, so no agent tool call can
@@ -246,14 +314,16 @@ Stated plainly, because a submission that hides these is worse than one that nam
   action the policy would now deny.
 - **The audit log is append-only.** There is no delete or redact path in `audit.js`;
   `read_audit_log` is its only reader.
-- **Host-header validation is on.** The SDK's DNS-rebinding protection rejects any
-  request whose `Host` is not `localhost`/`127.0.0.1`. Verified: `Host:
-  evil.example.com` gets `HTTP 403` with `Invalid Host: evil.example.com`. The listening
-  socket itself is not restricted to the loopback interface, so this header check — not
-  the bind address — is what keeps a non-local client out.
+- **Host-header validation is off, deliberately (#124).** The SDK's DNS-rebinding
+  protection defaults to rejecting any request whose `Host` is not
+  `localhost`/`127.0.0.1` — true until this demo was actually deployed to a real
+  address, at which point that check refused every request from its own public IP with
+  `HTTP 403 Invalid Host`. Disabled via `enableDnsRebindingProtection: false`, the same
+  tradeoff already made for CORS below: with no auth and no origin allowlist, this one
+  check wasn't real protection, just an accident of the SDK's localhost-only default.
 - **CORS is wide open (`Access-Control-Allow-Origin: *`)** because the demo runs two
   local processes on two ports. That is appropriate for a localhost demo and would need
-  tightening to an allowlist before any deployment.
+  tightening to an allowlist before any production deployment.
 - **The client's static server serves only `client/`**, from a fixed extension allowlist,
   and rejects any resolved path outside its own directory.
 

@@ -76,6 +76,11 @@ function createApp({
         transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID(),
           enableJsonResponse: true,
+          // Same tradeoff already made for CORS below: this demo has no auth and no
+          // origin allowlist, so rejecting only the Host header while leaving every
+          // other check open added no real protection — it just made a deployed
+          // instance unreachable by its own public IP/DNS (#124).
+          enableDnsRebindingProtection: false,
           onsessioninitialized: (newSessionId) => {
             transports[newSessionId] = transport;
           },

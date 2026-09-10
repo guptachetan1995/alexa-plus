@@ -10,6 +10,12 @@
 // exception, by design (see planner.js): minting or withholding a confirmation token
 // happens only through this file's Confirm/Decline buttons, via McpHttpClient's
 // approveProposal()/rejectProposal() — never through a tool call.
+//
+// #122: which planner runs is decided once, here, from `window.__ALEXA_PLUS_CONFIG__`
+// (templated in by server.js — see there for why app.js never reads process.env
+// itself). The scripted path below is completely unchanged; PLANNER=bedrock only adds a
+// dynamic import of bedrock-planner.js, which is wired to the exact same onTurn/
+// onConfirmRequest callbacks runConversation() already used.
 
 import React from 'react';
 import { createRoot } from 'react-dom/client';
@@ -18,6 +24,7 @@ import { runConversation } from './planner.js';
 
 const h = React.createElement;
 const DEFAULT_SERVER_URL = 'http://127.0.0.1:3000/mcp';
+const CONFIG = window.__ALEXA_PLUS_CONFIG__ || { planner: 'scripted' };
 
 function proposalSummary(proposal) {
   if (!proposal) return '';
@@ -133,10 +140,19 @@ function App() {
     setStatus('running');
     const client = new McpHttpClient(serverUrl);
     try {
-      await runConversation(client, {
-        onTurn: (turn) => setTurns((prev) => [...prev, turn]),
-        onConfirmRequest,
-      });
+      if (CONFIG.planner === 'bedrock') {
+        const { runBedrockConversation } = await import('./bedrock-planner.js');
+        await runBedrockConversation(client, {
+          modelId: CONFIG.modelId,
+          onTurn: (turn) => setTurns((prev) => [...prev, turn]),
+          onConfirmRequest,
+        });
+      } else {
+        await runConversation(client, {
+          onTurn: (turn) => setTurns((prev) => [...prev, turn]),
+          onConfirmRequest,
+        });
+      }
       setStatus('done');
     } catch (err) {
       setError(err.message);
