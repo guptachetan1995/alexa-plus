@@ -1,8 +1,8 @@
-// The Bedrock (AWS Converse API) tool-use-loop planner (SPEC.md section 10, #122): the
+// The Bedrock (AWS Converse API) tool-use-loop planner, enabled with PLANNER=bedrock: the
 // model chooses which tools to call and in what order, in place of planner.js's fixed
 // script — but it still has to reach every tool through the exact same
-// `mcpClient.callTool()` chokepoint (CLAUDE.md "Agent and human share one surface"), and
-// it still has to pass through the exact same human confirm gate to mint a token
+// `mcpClient.callTool()` chokepoint the UI and the scripted planner use, and it still
+// has to pass through the exact same human confirm gate to mint a token
 // (planner.js's header explains why that gate is never a tool call). This file is the
 // only place those two guarantees are re-proven for a reasoning planner instead of a
 // scripted one.
@@ -30,7 +30,7 @@
 // are passed straight through, because they are harmless (just a proposed device_id/
 // action/params, no token involved) — proposing something is not executing it.
 //
-// #130: this file imports NO AWS SDK code and holds NO AWS credential. A real browser
+// This file imports NO AWS SDK code and holds NO AWS credential. A real browser
 // tab cannot resolve `@aws-sdk/client-bedrock-runtime`'s bare import (no bundler here,
 // see index.html's import map), and even patching that around, the SDK's default
 // credential chain (env vars, `~/.aws/credentials`, IMDS) is Node-only and always
@@ -68,10 +68,9 @@ function defaultBedrockClient() {
 }
 
 // Cheapest Bedrock model confirmed to support Converse tool-use as of 2026-09-10
-// ($0.035/$0.14 per 1M input/output tokens — see entries/alexa-plus/SPEC.md section 10
-// for the comparison against Claude Haiku 4.5 and Nova Lite that led here). Anthropic's
-// own Claude 3.5 Sonnet was the original default but no longer appears in Bedrock's
-// supported-models list at all.
+// ($0.035/$0.14 per 1M input/output tokens; Claude Haiku 4.5 also supports it but costs
+// roughly 30x more, ~$1/$5). Anthropic's Claude 3.5 Sonnet was the original default but no
+// longer appears in Bedrock's supported-models list at all.
 export const DEFAULT_MODEL_ID = 'amazon.nova-micro-v1:0';
 
 const DEFAULT_USER_REQUEST =
@@ -224,7 +223,7 @@ export async function runBedrockConversation(mcpClient, opts = {}) {
     onConfirmRequest = async () => 'confirm',
     maxIterations = 10,
   } = opts;
-  // #130: which AWS region to call is server.js's decision now (it constructs the real
+  // Which AWS region to call is server.js's decision now (it constructs the real
   // client), not this browser-side loop's — there is no `region` option here any more.
   // Only ever the proxy when the caller doesn't supply one. Every test supplies its own
   // bedrockClient, so defaultBedrockClient()'s fetch() never runs under test.
@@ -251,7 +250,7 @@ export async function runBedrockConversation(mcpClient, opts = {}) {
   const confirmedProposals = new Map();
 
   for (let iteration = 0; iteration < maxIterations; iteration++) {
-    // #130: a plain `{ input }` object, not a real `ConverseCommand` — this file no
+    // A plain `{ input }` object, not a real `ConverseCommand` — this file no
     // longer imports the AWS SDK at all. `bedrockClient.send()` (a test's mock, or
     // defaultBedrockClient() above) only ever reads `.input`.
     const response = await bedrockClient.send({

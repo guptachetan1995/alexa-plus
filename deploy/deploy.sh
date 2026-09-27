@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Deploys the alexa-plus MCP server to AWS App Runner. OWNER-RUN ONLY (#124) — deploying
-# is a human-only action per CLAUDE.md; no goal, including the one that wrote this file,
-# runs this script. Idempotent: every resource is checked before it's created.
+# Deploys the alexa-plus MCP server to AWS App Runner. OWNER-RUN ONLY: it creates billable
+# AWS resources, so a person runs it by hand; no automation in this repo calls it.
+# Idempotent: every resource is checked before it's created.
 set -euo pipefail
 
 AWS_REGION="${AWS_REGION:-us-east-1}"
@@ -50,7 +50,7 @@ if ! aws iam get-role --role-name "$ACCESS_ROLE_NAME" >/dev/null 2>&1; then
   aws iam attach-role-policy --role-name "$ACCESS_ROLE_NAME" \
     --policy-arn arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess
   # A freshly created role isn't always immediately assumable; a short settle delay
-  # avoids a create-service race on a brand-new role (same reasoning as opencv's).
+  # avoids a create-service race on a brand-new role.
   sleep 8
 fi
 

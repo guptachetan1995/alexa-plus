@@ -1,15 +1,14 @@
 # Devpost submission write-up — alexa-plus
 
-Everything the Devpost form asks for, in the order the form asks for it, ready to paste.
-**Nothing here is submitted, published, or registered by this document** — the owner does
-that as a separate, human-only step.
+Everything the Devpost form asks for, in the order the form asks for it. This is the
+source text for the entry submitted to the **Build, Ship, Shape: Amazon Developer
+Hackathon** (Alexa+ track) at https://devpost.com/software/smart-home-agent.
 
-Field names below were re-checked against the live rules pages on **8 September 2026**
-(https://amazonappdev2026.devpost.com/ and .../rules), not taken from memory. Where the
-live rules differ from the checklist copied into `../SPEC.md` §11, the difference is
-called out in [Live-rules deltas](#live-rules-deltas).
-
-Anything the owner must supply is marked **`[owner]`** with what to put there.
+Field names below were checked against the live rules pages on **8 September 2026**
+(https://amazonappdev2026.devpost.com/ and .../rules), not taken from memory. The rules
+carry a short submission checklist and longer detailed rules; where the two differ, the
+difference is called out in [Live-rules deltas](#live-rules-deltas), and every checklist
+line is answered in [Submission checklist](#submission-checklist--every-line-with-evidence).
 
 ---
 
@@ -67,6 +66,10 @@ no-op: no token, an unknown token, an unapproved proposal, a replayed token, a t
 approved for a different action, or a policy denial at execute time. Each of those is
 covered by its own test.
 
+*Correction to the submitted copy above: the last case, a policy denial at execute time,
+has no direct test, because no approved token can reach it today — see
+[the refusal matrix](architecture.md#the-refusal-matrix).*
+
 The result is a smart home an agent can operate fluently and cannot operate unilaterally,
 with an append-only audit log that says who decided what and why.
 
@@ -99,11 +102,11 @@ sequencing and the policy reasoning; the person keeps the decision.
 
 ### AWS services and technologies used
 
-**Claimed and verified (2026-09-11, see [issue #32](https://github.com/guptachetan1995/hackathons-2026/issues/32)/[#124](https://github.com/guptachetan1995/hackathons-2026/issues/124)):** the AWS Builder mini-challenge is claimed. Two AWS services are actually
-incorporated:
+**Claimed and verified (2026-09-11):** the AWS Builder mini-challenge is claimed. Two AWS
+services are actually incorporated:
 
 - **Amazon Bedrock** (Converse API, tool-use loop) as an optional planner
-  (`PLANNER=bedrock`, [#122](https://github.com/guptachetan1995/hackathons-2026/issues/122)), model `amazon.nova-micro-v1:0` in `ap-southeast-2` — it replaces the
+  (`PLANNER=bedrock`), model `amazon.nova-micro-v1:0` in `ap-southeast-2` — it replaces the
   scripted planner's turn selection with real model reasoning, while every tool call
   still routes through the same MCP client chokepoint and every proposal still requires
   the same human confirm gate; the model has no path to mint its own confirmation token.
@@ -114,8 +117,9 @@ incorporated:
 - **AWS EC2** hosts the MCP server itself at a real, public, judge-testable URL:
   `http://16.176.3.215:3000/mcp` (`t3.micro`, Amazon Linux 2023, `ap-southeast-2`),
   verified with a real `initialize` handshake returning `HTTP 200`. (AWS App Runner —
-  the original plan in [#123](https://github.com/guptachetan1995/hackathons-2026/issues/123) — turned out to need an AWS Organizations "all features"
-  migration this account hasn't made; EC2 was the deploy path that didn't need it.)
+  the original plan, whose artifacts are in `deploy/` — turned out to need an AWS
+  Organizations "all features" migration this account hasn't made; EC2 was the deploy
+  path that didn't need it. See [`deploy.md`](deploy.md).)
 
 Technologies used are listed under [Built with](#built-with).
 
@@ -131,13 +135,14 @@ Alexa surface itself is simulated, and no Alexa device was in the loop.
 
 ## Built with
 
-*Devpost "Built With" tags.*
+*Devpost "Built With" tags, as they appear on the project page.*
 
 `model-context-protocol` · `mcp` · `streamable-http` · `json-rpc` · `node.js` ·
-`javascript` · `express` · `react` · `zod` · `jest` · `supertest` · `eslint` · `npm` ·
+`javascript` · `express.js` · `react` · `zod` · `jest` · `supertest` · `eslint` · `npm` ·
 `html` · `css` · `alexa`
 
-Versions are pinned in `../package.json` and `../client/package.json`:
+Versions are pinned in [`../package.json`](../package.json) and
+[`../client/package.json`](../client/package.json):
 
 | Component | Version | Where |
 |---|---|---|
@@ -149,6 +154,7 @@ Versions are pinned in `../package.json` and `../client/package.json`:
 | Supertest | ^7.2.2 | server (dev) |
 | ESLint | ^10.10.0 | server (dev) |
 | React | 18.3.1 (CDN import map) | client |
+| `@aws-sdk/client-bedrock-runtime` | ^3.600.0 (used only by `client/server.js`, only under `PLANNER=bedrock`) | client |
 | `node:test` | built in | client |
 | MCP spec revision | 2025-11-25 | `server/src/server.js` |
 
@@ -165,9 +171,7 @@ Versions are pinned in `../package.json` and `../client/package.json`:
 | Mini-challenge | Selected | Why |
 |---|---|---|
 | **Open Source** | **Yes** | New MIT-licensed project created inside the submission window. |
-| **AWS Builder** | **Yes** | Amazon Bedrock planner (#122), proven live via CloudShell with real credentials, plus AWS EC2 hosting for the MCP server (#124). Revised 2026-09-10, see #32; verified 2026-09-11. |
-
-Both decisions are recorded as binding in `../SPEC.md` §9.
+| **AWS Builder** | **Yes** | Amazon Bedrock planner (`PLANNER=bedrock`), proven live via CloudShell with real credentials, plus AWS EC2 hosting for the MCP server. Decided 2026-09-10 (the first draft of this write-up said no); verified 2026-09-11. |
 
 ### AWS Builder mini-challenge — required field
 
@@ -195,8 +199,8 @@ The live rules ask for four specific fields:
 
 | Field | Value |
 |---|---|
-| **Contribution URL** | `https://github.com/guptachetan1995/hackathons-2026/tree/main/entries/alexa-plus` |
-| **Project repository URL** | `https://github.com/guptachetan1995/hackathons-2026` |
+| **Contribution URL** | `https://github.com/guptachetan1995/alexa-plus` |
+| **Project repository URL** | `https://github.com/guptachetan1995/alexa-plus` |
 | **GitHub username** | `guptachetan1995` |
 | **Description of the work** | See below. |
 
@@ -222,9 +226,7 @@ The live rules ask for four specific fields:
 > pattern generalizes past smart homes to any agent that touches the physical or
 > financial world, and the whole thing is MIT-licensed and runs offline with no API key.
 
-**`[owner]`** The repository is **private** as of this write-up. The Open Source
-mini-challenge and the "public repository" requirement both need it public before
-submitting — see [Owner steps](#owner-steps-before-submitting).
+The repository is public, and GitHub detects its `LICENSE` as MIT.
 
 ---
 
@@ -258,12 +260,10 @@ the rules' requested shape (task / steps / expected vs. actual / severity / work
 suggestion), indexed by severity at the end of that file: one Medium (the CORS gap) and
 three Low.
 
-That file's own header states plainly that its git history contains exactly four entries
-and that no fifth was invented to hit a round number. That claim is checkable:
-
-```bash
-git log -p -- entries/alexa-plus/docs/friction-log.md
-```
+That file's own header states plainly that the build recorded exactly four entries and
+that no fifth was invented to hit a round number. This repository is a published copy of
+the project, so its history cannot show when each entry was written (see
+[Pre-existing project disclosure](#pre-existing-project-disclosure)).
 
 ---
 
@@ -289,38 +289,44 @@ Nothing here is new — every one traces to a problem actually hit during the bu
 *Devpost field: "Documentation of any pre-hackathon work (with clear separation of new
 code)".*
 
-**There is none.** Every file under `entries/alexa-plus/` was created inside the
-submission window, in this repository, which was itself created on **7 September 2026**.
-No code was copied from any earlier project. The repository's own convention (`CLAUDE.md`,
-"Nothing copied from other repos") forbids it: ideas from earlier work may be
-re-implemented, files may not be copied.
+**There is none.** Every file in this repository was written inside the submission
+window. No code was copied from any earlier project: the development workspace's rule is
+that ideas from earlier work may be re-implemented, but files may not be copied.
 
-Checkable:
+**How far that can be checked here.** The project was built in a private development
+workspace and published to this public repository as a fresh copy of the project
+directory, so this repository's own history consists only of publish commits (the first
+on 2026-09-10) and does not show the individual changes. In the development workspace,
+the first commit touching this project and the commit that added `server/src/server.js`
+are both dated **2026-09-08**. The last change to behavior is dated 2026-09-11; later
+changes only reword documentation, code comments, test names and the client page's
+subtitle.
 
-```bash
-git log --reverse --format='%h %ad %s' --date=short -- entries/alexa-plus | head -1
-git log --diff-filter=A --format='%ad %s' --date=short -- entries/alexa-plus/server/src/server.js
-```
+The build went in this order:
 
-The build is traceable to seven issues, each with its own pull request: #33 (platform
-research and `SPEC.md`), #34 (server scaffold + two tools + conformance tests), #35 (the
-simulated client), #36 (the remaining six tools and the propose/confirm/execute
-lifecycle), #37 (feedback + friction-log consolidation), #39 (the demo video script), and
-#38 (README, license, architecture, this write-up). The two remaining open issues, #32
-and #40, are both human-only by design and are listed under
-[Owner steps](#owner-steps-before-submitting).
+1. Platform research and the design: tool list, data model, demo script (2026-09-08).
+2. MCP server scaffold with two read-only tools and the conformance tests (2026-09-08).
+3. The simulated Alexa+ web client, calling the server only over HTTP (2026-09-08).
+4. The remaining six tools and the propose → confirm → execute lifecycle (2026-09-08).
+5. Product feedback and friction log; demo video script; README, license check,
+   architecture diagrams and this write-up (2026-09-08).
+6. App Runner deployment artifacts; the Bedrock planner behind `PLANNER=bedrock` and its
+   default model (2026-09-10).
+7. The Bedrock call moved from the browser into `client/server.js`; the MCP SDK's
+   localhost-only `Host` check opened up so the EC2-hosted server is reachable; the docs
+   updated with the deployed URL and measured latency (2026-09-11).
 
 ---
 
 ## Demo video
 
-**`[owner]`** Record from [`video-script.md`](video-script.md) and paste the public
-YouTube or Vimeo URL here.
+**https://www.youtube.com/watch?v=14YZX4JtDjY** (public on YouTube, embedded on the Devpost
+project page).
 
-The script is complete and timed: **2:25 scripted, 2:42 hard ceiling**, nine scenes with
-verbatim narration, an exact seeded starting state, and a documented trim order if a take
-runs long. It shows all four required beats — the conversation, live tool calls, a
-confirmed action that executes, and a refused one that does not.
+It was produced from [`video-script.md`](video-script.md): **2:25 scripted, 2:42 hard
+ceiling**, nine scenes with verbatim narration and an exact seeded starting state. It
+shows all four required beats — the conversation, live tool calls, a confirmed action
+that executes, and a refused one that does not.
 
 The live rules say **"less than three (3) minutes"** and that judges are not required to
 watch beyond three minutes. The script is comfortably inside that.
@@ -329,14 +335,12 @@ watch beyond three minutes. The script is comfortably inside that.
 
 ## Repository URL
 
-`https://github.com/guptachetan1995/hackathons-2026` — the entry lives at
-`entries/alexa-plus/`.
+**https://github.com/guptachetan1995/alexa-plus**
 
 The rules require the repository to be public, with an open-source license file, and the
-license visible in the repository's About section. Both LICENSE files are in place and
-MIT: the repository root's (which is what GitHub reads for the About section) and this
-entry's own at `entries/alexa-plus/LICENSE`. **`[owner]`** The repository is still
-private; making it public is the remaining step.
+license visible in the repository's About section. The repository is public, its root
+[`LICENSE`](../LICENSE) is the MIT license, and GitHub detects it as MIT, which is what
+the About section shows.
 
 ---
 
@@ -346,7 +350,7 @@ The four criteria are equally weighted.
 
 | Criterion | The strongest evidence |
 |---|---|
-| **Tech Implementation** | A from-scratch Streamable HTTP MCP server on spec revision 2025-11-25, verified by an off-the-shelf client (the MCP Inspector CLI) rather than only by its own bundled one. 41 server conformance tests across 7 suites plus 5 client integration tests that spawn the real server as a separate process. |
+| **Tech Implementation** | A from-scratch Streamable HTTP MCP server on spec revision 2025-11-25, verified by an off-the-shelf client (the MCP Inspector CLI) rather than only by its own bundled one. 41 server conformance tests across 7 suites, plus 22 client tests, including integration tests that spawn the real server as a separate process. |
 | **Design** | The gate is the interaction model, not a dialog bolted on: propose, pause, Confirm or Decline, execute or narrate. The demo deliberately shows both outcomes of the same gate in one run. |
 | **Potential Impact** | Agent authority in the physical home is the actual blocker to adoption, and this makes the authority boundary structural — one function mints authorization and nothing agent-side can call it. The pattern generalizes to any agent that touches the world. |
 | **Quality of the Idea** | The insight is that a confirmation an agent can route around is not a confirmation. Making token-minting unreachable from the tool surface — and testing every bypass — is what separates this from a confirmation-dialog demo. |
@@ -355,81 +359,73 @@ The four criteria are equally weighted.
 
 ## Live-rules deltas
 
-Differences found on 8 Sep 2026 between the live rules pages and the checklist copied
-verbatim into `../SPEC.md` §11. SPEC.md's copy is left as-is (it is the pinned contract);
-these are the readings to honor.
+Differences found on 8 Sep 2026 between the rules' short submission checklist (whose
+lines are the "Checklist line" column in the next section) and the detailed rules. Where
+they differ, the detailed rules are the reading this entry follows.
 
-| Topic | SPEC.md §11 | Live rules | Effect |
+| Topic | Submission checklist says | Detailed rules say | Effect |
 |---|---|---|---|
 | Video length | "approximately 3 minutes" | "less than three (3) minutes" (hard max) | None — the script targets 2:25 with a 2:42 ceiling, inside both readings. |
 | Open Source fields | not enumerated | contribution URL, repo URL, GitHub username, description | All four supplied above. |
 | Feature requests | not mentioned | optional field with a priority rating | Supplied above. |
 | Friction log | not mentioned | optional, up to a 10% judging bonus | `friction-log.md` supplied. |
 | Alexa+ route | "using the Alexa+ MCP Toolkit or Agent Skills" | a self-hosted MCP server (min spec 2025-11-25, Streamable HTTP) **or** a simulated Alexa+ experience | We take the second route and say so plainly; neither the Toolkit nor an Agent Skill is used. |
-| License visibility | "open-source license" | must be "visible in the About section" of a public repo | Root LICENSE is MIT (what GitHub reads); repo must be made public. |
+| License visibility | "open-source license" | must be "visible in the About section" of a public repo | The root `LICENSE` is MIT and GitHub detects it; the repository is public. |
 
 ---
 
 ## Submission checklist — every line, with evidence
 
-`../SPEC.md` §11, line by line. "Evidence" is a file path or real command output — no
-line is ticked on assertion alone.
+The hackathon's own submission checklist, from the rules at
+https://amazonappdev2026.devpost.com/, line by line. "Evidence" is a file path, a URL or
+real command output — no line is ticked on assertion alone.
 
 ### Required Submissions
 
 | # | Checklist line | Status | Evidence |
 |---|---|---|---|
-| 1 | Text description explaining functionality, use case, and any AWS services/technologies used | **In progress** | [AWS services used](#aws-services-and-technologies-used) above — Bedrock planner (#122) + App Runner hosting (#123/#124) not yet built; do not submit the final write-up until they're real. |
-| 2 | Public GitHub repository with source code and open-source license | **Owner** | Both LICENSE files present and MIT (`LICENSE` at repo root, `entries/alexa-plus/LICENSE`); `verify.sh` asserts the entry LICENSE begins `MIT License`. Repo is currently private — making it public is the owner's step. |
-| 3 | Demo video approximately 3 minutes, public on YouTube/Vimeo | **Owner** | [`video-script.md`](video-script.md): 9 scenes, verbatim narration, 2:25 scripted / 2:42 ceiling. Recording and upload are the owner's step. |
-| 4 | Product feedback on all tools and APIs used (graded) | **Done** | [`feedback.md`](feedback.md) — 10 dependencies, each with what-for / worked / needs-work / onboarding / build-again. |
-| 5 | Track and mini-challenge selections | **In progress** | Alexa+; Open Source yes, AWS Builder **yes** (revised 2026-09-10, see #32). Pinned in `../SPEC.md` §9, restated above with the four required Open Source fields. |
-| 6 | Documentation of any pre-hackathon work | **Done** | [Pre-existing project disclosure](#pre-existing-project-disclosure) — none, with the git commands that prove it. |
+| 1 | Text description explaining functionality, use case, and any AWS services/technologies used | **Done** | [Text description](#text-description) above, including [AWS services used](#aws-services-and-technologies-used): the Bedrock planner and EC2 hosting, both verified live on 2026-09-11. |
+| 2 | Public GitHub repository with source code and open-source license | **Done** | https://github.com/guptachetan1995/alexa-plus is public; its root `LICENSE` is MIT and GitHub detects it as MIT. `verify.sh` asserts `LICENSE` begins `MIT License` and names a copyright holder. |
+| 3 | Demo video approximately 3 minutes, public on YouTube/Vimeo | **Done** | https://www.youtube.com/watch?v=14YZX4JtDjY, produced from [`video-script.md`](video-script.md) (9 scenes, 2:25 scripted / 2:42 ceiling). |
+| 4 | Product feedback on all tools and APIs used (graded) | **Partial** | [`feedback.md`](feedback.md) — 10 dependencies, each with what-for / worked / needs-work / onboarding / build-again. Not covered yet: Amazon Bedrock (Converse), `@aws-sdk/client-bedrock-runtime` and AWS EC2. |
+| 5 | Track and mini-challenge selections | **Done** | Alexa+ track; Open Source and AWS Builder mini-challenges, with the four required Open Source fields and the AWS Builder write-up [above](#mini-challenge-selections). |
+| 6 | Documentation of any pre-hackathon work | **Done** | [Pre-existing project disclosure](#pre-existing-project-disclosure) — none, with the build dates and what this repository's history can and cannot show. |
 
 ### Track-Specific Requirements (Alexa+)
 
 | # | Checklist line | Status | Evidence |
 |---|---|---|---|
 | 7 | Working Alexa+ integration using the Alexa+ MCP Toolkit or Agent Skills | **Alternative route** | Neither the Toolkit nor an Agent Skill is used. Instead: a self-hosted MCP server on spec `2025-11-25` over Streamable HTTP (`server/src/server.js`) plus a simulated Alexa+ web client (`client/`) — the alternative the live rules allow for this track. Stated plainly, not claimed as Toolkit usage. |
-| 8 | Functional demo video showing the MCP server responding and tools being invoked | **Owner** | [`video-script.md`](video-script.md) scenes 1–9 cover exactly this, including a live refusal via the MCP Inspector CLI. |
-| 9 | MCP server accessible via remote URL with response latency under 500 ms | **Deployed and reachable; latency depends on tester location** | Live at `http://16.176.3.215:3000/mcp` (AWS EC2, `ap-southeast-2`, #124) — verified with a real `initialize` handshake returning `HTTP 200`. Loopback `tools/call` round-trip is still 0.62–1.17 ms (unchanged — the server itself adds no measurable latency). End-to-end latency measured from the deploying session's US-based test origin is 570–700 ms, over the 500 ms line; a `curl` timing breakdown shows ~290 ms of that is the TCP connect round trip alone, i.e. real network distance to `ap-southeast-2` rather than server processing. A tester within Australia/APAC would measure comfortably under 500 ms. |
-| 10 | OAuth 2.1 with PKCE (if server requires authentication) | **Not applicable as written; a real gap for onboarding** | The server requires no authentication, so the conditional does not trigger. `../SPEC.md` §7 records `auth.js` as deliberately deferred. Amazon's Alexa+ onboarding docs do require OAuth 2.1 + PKCE (S256) for a real add-on — documented as a known limitation, not papered over. |
+| 8 | Functional demo video showing the MCP server responding and tools being invoked | **Done** | The [demo video](#demo-video) follows [`video-script.md`](video-script.md) scenes 1–9: live tool calls in the client, then a refusal called directly with the MCP Inspector CLI. |
+| 9 | MCP server accessible via remote URL with response latency under 500 ms | **Deployed and reachable; latency depends on tester location** | Live at `http://16.176.3.215:3000/mcp` (AWS EC2, `ap-southeast-2`) — verified with a real `initialize` handshake returning `HTTP 200`. Loopback `tools/call` round-trip is still 0.62–1.17 ms (unchanged — the server itself adds no measurable latency). End-to-end latency measured from the deploying session's US-based test origin is 570–700 ms, over the 500 ms line; a `curl` timing breakdown shows ~290 ms of that is the TCP connect round trip alone, i.e. real network distance to `ap-southeast-2` rather than server processing. A tester within Australia/APAC would measure comfortably under 500 ms. |
+| 10 | OAuth 2.1 with PKCE (if server requires authentication) | **Not applicable as written; a real gap for onboarding** | The server requires no authentication, so the conditional does not trigger. An `auth.js` for OAuth 2.1 + PKCE was planned and deliberately deferred. Amazon's Alexa+ onboarding docs do require OAuth 2.1 + PKCE (S256) for a real add-on — documented as a known limitation, not papered over. |
 | 11 | Documentation of how to onboard the MCP server to Alexa+ | **Done** | [`architecture.md` §4](architecture.md#4-onboarding-this-mcp-server-to-alexa) — every documented requirement with this server's actual status against it, sourced from Amazon's MCP QuickStart, MCP Toolkit overview, and account-linking pages. |
 
 ### Additional Requirements
 
 | # | Checklist line | Status | Evidence |
 |---|---|---|---|
-| 12 | All project code and documentation in English | **Done** | Every source file and every document in `entries/alexa-plus/` is English; the only non-ASCII characters are typographic (em dashes, curly quotes, the degree sign in temperatures). |
+| 12 | All project code and documentation in English | **Done** | Every source file and every document in this repository is English; the only non-ASCII characters are typographic (em dashes, curly quotes, the degree sign in temperatures). |
 | 13 | Only fictional or masked data in samples and tests | **Done** | `server/data/devices.json` — five invented devices in an invented house. No real address, account, network or personal identifier appears anywhere; no external device API is contacted. |
-| 14 | Setup and installation instructions in README | **Done** | `../README.md` Setup / Run / Test / Lint / Verify, plus the client's own three commands and the off-the-shelf Inspector CLI section. Re-run from a clean checkout for this write-up — output in the pull request. |
-| 15 | Privacy and security notes for integrations | **Done** | `../README.md` § "Privacy and security notes". |
-| 16 | No secrets, API keys, or personal information in the repository | **Done** | No credential of any kind is read or stored; there is no `.env` and no auth path. A scan for key/secret/password/token/private-key patterns across the entry (excluding `node_modules`) returns only the literal words inside `verify.sh`'s own check list and SPEC.md's checklist text. |
-| 17 | Verify that the project passes its own test suite before submission | **Done** | From a clean checkout: server `npm run lint` clean, `npm test` **41 passed, 7 suites**; client `npm test` **5 passed**; `bash verify.sh` passes end to end. Literal output in the pull request. |
+| 14 | Setup and installation instructions in README | **Done** | [`../README.md`](../README.md) Setup / Run / Test / Lint / Verify, plus the client's own three commands and the off-the-shelf Inspector CLI section. `bash verify.sh` runs the same install, lint and test commands from a fresh copy. |
+| 15 | Privacy and security notes for integrations | **Done** | [`../README.md`](../README.md#privacy-and-security-notes) § "Privacy and security notes". |
+| 16 | No secrets, API keys, or personal information in the repository | **Done** | The MCP server and the scripted planner read no credential; there is no `.env` and no auth path. The one credential in play is the AWS one `client/server.js` resolves from its own environment under `PLANNER=bedrock`, and none is stored in the repository. A scan of every tracked file for credential-shaped values (`AKIA` access key ids, `-----BEGIN … PRIVATE KEY`, `aws_secret_access_key`, `ghp_`/`xox`/`sk-` tokens) and for `.env`, `.pem` or `credentials` files matches only this row's own list of the patterns. |
+| 17 | Verify that the project passes its own test suite before submission | **Done** | From a fresh copy: `bash verify.sh` runs server `npm run lint` (clean), server `npm test` (**41 passed, 7 suites**) and client `npm test` (**22 passed**), and ends with `alexa-plus: all checks passed.` |
 
-**Summary: 12 lines done or ready to paste, 3 waiting on the owner (make the repo public,
-record and upload the video, submit), 1 taken by a documented alternative route (7), and
-2 honest gaps stated as limitations rather than claimed (9 hosting, 10 OAuth).**
+**Summary: 13 lines done, 1 partial (4 feedback: Bedrock, its AWS SDK client and EC2 not
+yet covered), 1 taken by a documented alternative route (7), and 2 honest gaps stated as
+limitations rather than claimed (9 latency from distant testers, 10 OAuth).**
 
 ---
 
-## Owner steps before submitting
+## Submission status
 
-Everything below is human-only under `CLAUDE.md`'s design watches — no agent goal does
-any of it. Two open issues carry these steps: **#32** (register on Devpost, create an AWS
-Builder ID, choose the mini-challenges) and **#40** (record the video, publish, submit).
+Submitted on Devpost: https://devpost.com/software/smart-home-agent. The project page
+embeds the [demo video](#demo-video) and links this repository and the live MCP URL
+(`http://16.176.3.215:3000/mcp`). The sections of this document are the source text for
+the form's fields: the text description, Built With, product feedback (`feedback.md`),
+friction log (`friction-log.md`), feature requests, the pre-existing-work disclosure, and
+the track and mini-challenge fields.
 
-1. **Make the repository public** and confirm the MIT license shows in the About section.
-   (Required by checklist line 2 *and* by the Open Source mini-challenge.)
-2. **Record the demo video** from [`video-script.md`](video-script.md), upload it publicly
-   to YouTube or Vimeo, and paste the URL into [Demo video](#demo-video) above.
-3. **Optional, if a public endpoint is wanted for checklist line 9:** deploy the server
-   behind an HTTPS URL. Not required for the simulated-experience route this entry takes;
-   it would be required to onboard a real Alexa+ add-on, which would also need the OAuth
-   2.1 + PKCE work that `../SPEC.md` §7 defers.
-4. **Register on Devpost** (issue #32, if not already done) **and submit**, pasting: the
-   text description, the Built With tags,
-   the repository URL, the video URL, the full text of `feedback.md`, the full text of
-   `friction-log.md`, the feature requests, the pre-existing-work disclosure, the track
-   selection (Alexa+), and the mini-challenge selection (Open Source) with its four
-   required fields.
+Still not done, and stated as limitations rather than claimed: an HTTPS endpoint and the
+OAuth 2.1 + PKCE flow a real Alexa+ add-on would need for onboarding.

@@ -1,5 +1,5 @@
-// Integration test for issue #35's DoD: drives the SPEC.md conversation's read-only
-// turns against a REAL, separately-spawned server process — never by importing server
+// Integration test for the simulated client: drives the demo conversation's turns
+// against a REAL, separately-spawned server process — never by importing server
 // code (client/ imports nothing from server/; this file only shells out to
 // `node server/src/server.js` and talks to it over HTTP, exactly like a browser would).
 import { test, before, after } from 'node:test';
@@ -65,7 +65,7 @@ after(() => {
   serverProcess?.kill();
 });
 
-test('the script calls every SPEC.md tool now that issue #36 registered the remaining six', () => {
+test('the demo script calls every server tool it uses through a real tools/call', () => {
   const real = realToolTurns(CONVERSATION_SCRIPT);
   assert.deepEqual(
     real.map((t) => t.tool.name),
@@ -111,13 +111,13 @@ test('get_device_state (real, read-only) reads the actual seeded living room lig
   await client.close();
 });
 
-test('runConversation walks the full SPEC.md script against the live server, confirming the first proposal and declining the second (DoD: one confirmed and one declined action)', async () => {
+test('runConversation walks the full demo script against the live server, confirming the first proposal and declining the second', async () => {
   const client = new McpHttpClient(serverUrl);
 
   let confirmRequests = 0;
   // Deterministic stand-in for a person clicking Confirm the first time this fires
   // (dimming the living room light) and Decline the second time (the kitchen plug) —
-  // exactly the two-outcome demo SPEC.md section 5's issue #36 amendment describes.
+  // exactly the two-outcome demo the README's "Demo walkthrough" describes.
   const onConfirmRequest = async () => (confirmRequests++ === 0 ? 'confirm' : 'decline');
 
   const turns = await runConversation(client, { script: CONVERSATION_SCRIPT, onConfirmRequest });

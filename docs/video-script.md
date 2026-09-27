@@ -1,16 +1,17 @@
 # alexa-plus Demo Video — Script & Shot List
 
-Deliverable for issue #39. The owner records the final video (a separate, human-only
-step); this document is everything they need to do it without improvising: narration
-text, shot list, the exact seeded state to start from, and the timing budget.
+The production script for the demo video, published at
+https://www.youtube.com/watch?v=14YZX4JtDjY. It is everything needed to record the video
+without improvising: narration text, shot list, the exact seeded state to start from, and
+the timing budget. Paths and commands below are relative to the root of this repository.
 
 ## Target runtime
 
 **Scripted length: ~2:25. Hard ceiling: 2:42** (Devpost asks for "approximately 3
-minutes"; the issue's DoD asks for under 3:00 with 10% headroom, i.e. 2:42). Every tool
+minutes"; the target was under 3:00 with 10% headroom, i.e. 2:42). Every tool
 call in this demo resolves against an in-memory registry on localhost — visibly instant
 on screen, no loading state to wait out — so there is no network- or provider-bound
-segment like call-e's real phone call. On-screen pacing is entirely narration-paced and
+segment. On-screen pacing is entirely narration-paced and
 clicking-paced, not technical latency, so this script's timing is not a nominal
 estimate: it is exactly what a person clicking through it at a normal, unhurried pace
 will see.
@@ -20,16 +21,15 @@ will see.
 Two terminals plus a browser, all opened before recording starts:
 
 ```bash
-# Terminal 1 — server
-cd entries/alexa-plus
+# Terminal 1 — server, from the repository root
 npm install
 npm start   # MCP server on http://127.0.0.1:3000/mcp
 ```
 
 ```bash
 # Terminal 2 — client
-cd entries/alexa-plus/client
-npm install   # no-op, kept only so the two-line "install && start" pattern matches server/
+cd client
+npm install   # fetches only the optional Bedrock SDK; the scripted demo does not use it
 npm start     # simulated Alexa+ client on http://127.0.0.1:5173
 ```
 
@@ -37,7 +37,7 @@ Check nothing else is already bound to 5173 before starting the client (a stray 
 from an earlier session will make `npm start` fail with `EADDRINUSE`); if so, run
 `PORT=<n> npm start` instead and open that port.
 
-Open a third terminal in `entries/alexa-plus`, ready but not yet run — it is used only
+Open a third terminal at the repository root, ready but not yet run — it is used only
 for Scene 7 (the server-refusal beat) and should stay hidden until then so it does not
 leak the outcome early. Pre-warm it once before recording:
 
@@ -95,7 +95,7 @@ narration:
   app's `ToolPanel` component has full support for rendering a refusal (a red "REFUSED"
   badge and the narrated reason text, styled distinctly from a successful "REAL — server
   call" result) but nothing in the demo's own scripted path ever triggers it. **The
-  refusal beat this issue requires has to be shown from outside the app**, against the
+  refusal beat the video needs has to be shown from outside the app**, against the
   same running server, using the MCP Inspector CLI the README already documents for
   exactly this kind of direct inspection (see Scene 7).
 - **Every tool call is genuinely real, not simulated** — `client/src/planner.js` routes
@@ -127,15 +127,15 @@ narration:
 | 3 | 0:30–0:50 | Browser, click **Confirm**; `execute_action` tool panel appears with the "REAL — server call" badge and `new_state` showing brightness 50 | Click Confirm | "One click mints a one-time confirmation token — only this button can mint it, never the agent. `execute_action` runs, and the light is genuinely at 50% now — the first and only moment its state actually changed." |
 | 4 | 0:50–1:05 | Browser, thermostat check, then the second **Confirmation needed** panel (Kitchen Coffee Maker Plug, turn_off) | Let the thermostat turn and the new proposal render | "It checks the thermostat, then the user asks it to also turn off the kitchen plug. Same gate, second time — propose, then wait." |
 | 5 | 1:05–1:25 | Browser, click **Decline**; scroll to the final `read_audit_log` tool panel | Click Decline | "This time, decline. The agent never calls `execute_action` for the plug — and the audit log at the end proves it: one entry, total. The light. Nothing else ever executed." |
-| 6 | 1:25–1:35 | Cut to the pre-opened third terminal, `entries/alexa-plus` | No action yet — just the prompt | "So confirming and declining both worked, inside the app. What stops the agent from just skipping the person entirely?" |
+| 6 | 1:25–1:35 | Cut to the pre-opened third terminal, at the repository root | No action yet — just the prompt | "So confirming and declining both worked, inside the app. What stops the agent from just skipping the person entirely?" |
 | 7 | 1:35–2:00 | Terminal — run: `npx -y @modelcontextprotocol/inspector --cli http://127.0.0.1:3000/mcp --method tools/call --tool-name execute_action --tool-arg device_id=dev_kitchen_plug_1 --tool-arg action=turn_off` — zoom on the `isError` field and the message text | Run the command, pause on the output | "Calling `execute_action` on that plug directly — no confirmation id at all. `isError: true`. It needs a confirmation id minted by a person confirming a pending proposal, and this call didn't have one." |
 | 8 | 2:00–2:15 | Terminal — run `get_device_state` for the same device (same Inspector CLI pattern, `--tool-name get_device_state`) | Run the command | "Check the device afterward: still off, same timestamp as before. This isn't a warning beside a change that happened anyway. Nothing happened." |
-| 9 | 2:15–2:25 | Terminal — `npm test` from the entry root, scrolled to the summary line | Run the command, hold on the green summary | "Forty-one tests hold this gate from every angle. One button an agent can never press for itself: confirm." |
+| 9 | 2:15–2:25 | Terminal — `npm test` from the repository root, scrolled to the summary line | Run the command, hold on the green summary | "Forty-one tests hold this gate from every angle. One button an agent can never press for itself: confirm." |
 
 ## Timing contingency
 
 Every segment above is either a fixed narration read or a near-instant tool call — there
-is no variable-duration real-world step like call-e's phone call. If a take runs long,
+is no variable-duration real-world step. If a take runs long,
 trim in this order without dropping any of the four required beats (the conversation,
 an inline tool call, a confirmed action, and a refused one): shorten Scene 9's line to
 its first sentence ("Forty-one tests hold this gate from every angle."); then shorten
@@ -145,25 +145,25 @@ policy-check panel is still visible on screen without being narrated line-by-lin
 ## What this script does not show
 
 - `compose_scene`/`execute_scene` — real, tested (`server/test/proposal-lifecycle.test.js`,
-  `policy.test.js`), but SPEC.md section 5's demo script only exercises single-device
+  `policy.test.js`), but the demo conversation only exercises single-device
   `propose_action`/`execute_action`, and adding a scene here would push well past the
-  strongest-30-seconds framing for no new beat the DoD asks for.
-- The owner-only CLI verbs from SPEC.md section 3 (`approve`, `reject`, `list-proposals`,
-  `audit`) — this entry has no CLI; SPEC.md section 7's file-layout note (issue #36)
-  records that they became two REST routes instead (`POST /proposals/:id/approve` and
-  `/reject`), which is what the Confirm/Decline buttons call. Nothing to film separately.
-- OAuth 2.1 with PKCE — SPEC.md section 7 records this as not yet built (a later goal);
-  the demo runs against the unauthenticated local server, matching what actually exists.
+  strongest-30-seconds framing for no new required beat.
+- Owner-only CLI verbs (`approve`, `reject`, `list-proposals`, `audit`) from the original
+  design — this entry has no CLI; `approve` and `reject` became two REST routes instead
+  (`POST /proposals/:id/approve` and `/reject`), which is what the Confirm/Decline buttons
+  call. Nothing to film separately.
+- OAuth 2.1 with PKCE — not implemented; the demo runs against the unauthenticated local
+  server, matching what actually exists.
 - A `blocked_by_policy` proposal (the `ConfirmPanel`'s grayed-out "Blocked by automation
   policy" state, `disabled` Confirm button) — real in the code (`app.js`'s `ConfirmPanel`
-  checks `proposal.status === 'blocked_by_policy'`), but neither of SPEC.md section 5's
+  checks `proposal.status === 'blocked_by_policy'`), but neither of the demo's
   two scripted actions trips a policy rule (both come back `allowed: true`), so it never
   renders during this script and is out of scope for the four required beats.
 
-## Dry-run verification (this goal)
+## Dry-run verification (when this script was written)
 
 Walked the full path above against a freshly started server and client (`npm install &&
-npm start` in `entries/alexa-plus/`, then the same in `entries/alexa-plus/client/`, a
+npm start` at the repository root, then the same in `client/`, a
 real browser tab pointed at `http://127.0.0.1:5199` — a non-default port, only because
 another concurrent session on this machine already held 5173 during this run) end to
 end: idle page → `list_devices` → `get_device_state` → `check_automation_policy` →
@@ -183,10 +183,11 @@ content rather than pixel screenshots — two pixel screenshots were captured su
 before the pane went out of view (the idle seeded page at 0:00, and the mid-conversation
 page with the `list_devices` result panel open), matching the sequence described above
 exactly.
-The full text transcript (every tool call and result, in order) and a description of
-both captured screenshots are pasted in the pull request for this issue. A real screen
-recording on the owner's own machine does not have this constraint — the browser is
-simply visible the whole time.
+The full text transcript (every tool call and result, in order) was kept with the
+change that added this script and is not part of this repository; the README's "Demo
+walkthrough" has a transcript of the same run shape. A real screen recording on the
+owner's own machine does not have this constraint — the browser is simply visible the
+whole time.
 
-`npm test` (41 tests, 7 suites) and `bash verify.sh` both pass against this same
-worktree; see the PR for the literal output.
+`npm test` (41 tests, 7 suites) and `bash verify.sh` both passed against the same
+checkout.

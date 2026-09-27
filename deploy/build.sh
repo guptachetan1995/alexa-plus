@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Builds the App Runner container image locally. No AWS call, no credential needed — this
-# is the one step #123 itself may execute for real (see docs/deploy.md). deploy.sh calls
-# this same script before it pushes, so the build path proven here is what #124 ships.
+# Builds the App Runner container image locally. No AWS call, no credential needed (see
+# docs/deploy.md). deploy.sh calls this same script before it pushes, so the build path
+# proven locally is the one that ships.
 set -euo pipefail
 
 ENTRY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

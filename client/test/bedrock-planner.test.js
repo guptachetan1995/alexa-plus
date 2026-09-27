@@ -1,4 +1,4 @@
-// Tests for the Bedrock (AWS Converse API) tool-use-loop planner (issue #122). Like
+// Tests for the Bedrock (AWS Converse API) tool-use-loop planner (PLANNER=bedrock). Like
 // conversation.integration.test.js, every tool call in here reaches a REAL, separately
 // spawned server process over real HTTP — the only thing ever mocked is `bedrockClient`,
 // a fake object with a `send(command)` method returning scripted Converse-shaped
@@ -406,7 +406,7 @@ test('a read-only tool call (list_devices) passes straight through to the real s
   await client.close();
 });
 
-// #130: bedrock-planner.js no longer imports the AWS SDK or constructs a
+// bedrock-planner.js no longer imports the AWS SDK or constructs a
 // BedrockRuntimeClient — with no `opts.bedrockClient` override, it POSTs to this same
 // origin's `/bedrock/converse` (server.js) instead. These two tests exercise exactly
 // that default path, stubbing only `fetch()` calls aimed at `/bedrock/converse` — every

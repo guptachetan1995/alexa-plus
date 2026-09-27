@@ -1,9 +1,8 @@
 'use strict';
 
-// Direct unit coverage for policy.js's deny branches (SPEC.md section 8: "Policy
-// tests: Verify the policy engine correctly allows/blocks actions based on configured
-// rules"). The propose/execute tests elsewhere only exercise the allow path plus one
-// energy-limit denial in passing — this file is the dedicated one.
+// Direct unit coverage for policy.js's allow/deny rules. The propose/execute tests
+// elsewhere only exercise the allow path plus one energy-limit denial in passing — this
+// file is the dedicated one.
 
 const { checkAutomationPolicy } = require('../src/policy.js');
 const { DeviceRegistry } = require('../src/device-registry.js');

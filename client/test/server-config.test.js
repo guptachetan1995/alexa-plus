@@ -1,7 +1,7 @@
 // Tests server.js's config-injection: PLANNER/BEDROCK_MODEL_ID from the process env get
 // templated into `window.__ALEXA_PLUS_CONFIG__` in the served HTML, so app.js can read
 // them without ever touching process.env itself (browser JS has none). AWS_REGION is
-// deliberately NOT part of this template (#130) — it only matters to the real
+// deliberately NOT part of this template — it only matters to the real
 // BedrockRuntimeClient server.js constructs for itself, and the browser no longer
 // constructs one at all, so it has nothing to read it for.
 import { test, after } from 'node:test';
@@ -76,7 +76,7 @@ test('PLANNER=bedrock and BEDROCK_MODEL_ID are templated into window.__ALEXA_PLU
 
   assert.equal(config.planner, 'bedrock');
   assert.equal(config.modelId, 'foo');
-  assert.equal(config.region, undefined, 'AWS_REGION must never reach the browser-templated config (#130)');
+  assert.equal(config.region, undefined, 'AWS_REGION must never reach the browser-templated config');
 
   proc.kill();
 });
@@ -102,7 +102,7 @@ test('a non-HTML response (a .js file) is served unmodified, with no config scri
   const res = await fetch(new URL('src/app.js', url));
   assert.equal(res.status, 200);
   const body = await res.text();
-  // app.js itself legitimately *reads* window.__ALEXA_PLUS_CONFIG__ (#122) — what this
+  // app.js itself legitimately *reads* window.__ALEXA_PLUS_CONFIG__ — what this
   // asserts is that server.js never *injects an assignment* into a non-HTML response.
   assert.ok(
     !body.includes('window.__ALEXA_PLUS_CONFIG__ ='),

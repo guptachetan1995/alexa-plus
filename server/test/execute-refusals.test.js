@@ -1,8 +1,7 @@
 'use strict';
 
-// DoD for issue #36: "a confirm without a proposal is refused and asserted in a test"
-// AND, per the issue's "Also" section, both refusal paths — missing token, and a token
-// with no matching pending proposal — are asserted here independently, for both
+// A confirm without a proposal is refused, and both refusal paths — missing token, and
+// a token with no matching pending proposal — are asserted here independently, for both
 // execute_action and execute_scene. Every assertion also checks the seeded state (or
 // audit log) is untouched, so a refusal is proven to be a true no-op, not just an
 // error message with a side effect that happened anyway.

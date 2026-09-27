@@ -1,5 +1,5 @@
-# Multi-stage Node 20 image for App Runner (SPEC.md §6 pins Node.js 20 LTS; #123/#124
-# close SPEC.md §11's "MCP server accessible via remote URL" line). server/ deps only —
+# Multi-stage Node 20 LTS image of the MCP server for AWS App Runner (docs/deploy.md; the
+# live server runs on EC2 instead, see there). server/ deps only —
 # client/ is a separate npm package (own package.json) and is never installed here.
 FROM node:20-alpine AS deps
 WORKDIR /app

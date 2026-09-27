@@ -1,16 +1,40 @@
 # Deploying the alexa-plus MCP server
 
-The server ships as a container image behind AWS App Runner (SPEC.md §6/§11): App
-Runner pulls from a private ECR repo, no ALB to manage, `0.25 vCPU` / `0.5 GB` is the
-smallest instance size. **Deploying is a human-only action** (tracked as #124) — this
-document is the runbook a person follows; nothing in this repo's automation runs the
-push/create-service commands for you.
+## What is actually live
 
-## Prerequisites
+The public server at `http://16.176.3.215:3000/mcp` runs on **AWS EC2** (`t3.micro`,
+Amazon Linux 2023, `ap-southeast-2`), set up by hand through the EC2 console on
+2026-09-11, with the server listening on port 3000. It was verified with a real MCP
+`initialize` handshake returning `HTTP 200` with the expected `protocolVersion`,
+`capabilities` and `serverInfo`. The README's
+[Known limitations](../README.md#known-limitations) section has the measured latency.
+
+It is not on App Runner, although the rest of this document is the App Runner runbook.
+On the AWS account used, App Runner needed an AWS Organizations "all features" migration
+the account had not made, and `us-east-1` was blocked by an Organizations service control
+policy, so the App Runner path below was never run against real AWS. The image build
+(Step 1) was run and is captured below; Steps 2 and 3 show typical output only.
+
+One code change was needed for any remote deployment, EC2 or App Runner: the MCP SDK's
+`createMcpExpressApp()` allows only `localhost`/`127.0.0.1` `Host` headers by default,
+which refused every request to the instance's public IP with `HTTP 403 Invalid Host`.
+`server/src/server.js` now calls `createMcpExpressApp({ host: '0.0.0.0' })` to opt out of
+that allowlist (see [Privacy and security notes](../README.md#privacy-and-security-notes)
+in the README for the tradeoff).
+
+## The App Runner runbook
+
+The server ships as a container image behind AWS App Runner: App Runner pulls from a
+private ECR repo, no ALB to manage, `0.25 vCPU` / `0.5 GB` is the smallest instance size.
+**Deploying is done by a person, by hand**, because it creates billable AWS resources —
+this document is the runbook that person follows; nothing in this repo's automation runs
+the push/create-service commands for you.
+
+### Prerequisites
 
 - **Build step**: Docker (Engine or Desktop) with a version that supports
   `docker build --platform`. Nothing else — no AWS account, no credentials.
-- **Deploy step** (owner-run only, #124): AWS CLI v2 and an AWS account with the
+- **Deploy step** (run by a person, by hand): AWS CLI v2 and an AWS account with the
   permissions in [`deploy/iam-policy.json`](../deploy/iam-policy.json).
 
 Run this locally, with no AWS credentials configured, to confirm the build step's
@@ -39,7 +63,7 @@ deploys x86_64 images, so `build.sh` pins `--platform linux/amd64` regardless of
 architecture (see Environment variables below) — the build below is a cross-arch build
 under QEMU emulation, not a native one.
 
-## Environment variables
+### Environment variables
 
 None of these are ever hard-coded in either script — every one is read as
 `${VAR:-default}`.
@@ -62,10 +86,11 @@ defaults, update the matching resource ARNs in
 [`deploy/iam-policy.json`](../deploy/iam-policy.json) to match — the policy's ARNs are
 pinned to the default names, not derived from these variables.
 
-## Step 1 — Build (local, no AWS credential needed)
+### Step 1 — Build (local, no AWS credential needed)
+
+From the project root (the directory holding `README.md`):
 
 ```
-cd entries/alexa-plus
 time IMAGE_TAG=alexa-plus-server:local bash deploy/build.sh
 ```
 
@@ -137,7 +162,7 @@ $ docker image inspect alexa-plus-server:local --format '{{.Size}}'
 (≈49.3 MB)
 ```
 
-### Optional local smoke check (not required by the DoD, worth doing anyway)
+#### Optional local smoke check
 
 Ran the built image, cross-arch under QEMU, and drove a real MCP `initialize` handshake
 against it to confirm the container actually starts and binds `PORT`:
@@ -161,7 +186,7 @@ mcp-session-id: fdb59a19-2b40-4062-b5c0-19b8fd1937b1
 Container stopped and removed afterward (`docker stop`/`docker rm`) — this smoke check
 proves the image runs, it is not a standing service.
 
-## Step 2 — Push and deploy (owner-run only, needs AWS credentials)
+### Step 2 — Push and deploy (run by a person, needs AWS credentials)
 
 ```
 AWS_REGION=us-east-1 AWS_PROFILE=default bash deploy/deploy.sh
@@ -186,7 +211,7 @@ service url: https://abcd1234.us-east-1.awsapprunner.com/mcp
 re-running it against an existing deployment only pushes a new image tag and updates
 the service, without recreating the ECR repo, access role, or App Runner service.
 
-## Step 3 — Verify the deployed URL
+### Step 3 — Verify the deployed URL
 
 ```
 curl -s -X POST "$SERVICE_URL/mcp" \
@@ -197,12 +222,14 @@ curl -s -X POST "$SERVICE_URL/mcp" \
 # smoke-check shape above (protocolVersion, capabilities, serverInfo)
 ```
 
-SPEC.md §11 requires "response latency under 500ms" for the deployed URL — this is the
-measurement #124 must actually take once a real service URL exists; the loopback
-measurement in README.md's "Known limitations" section (0.62-1.17 ms) is not a
-substitute for it, since App Runner network latency is not loopback.
+The Alexa+ track requires "response latency under 500ms" for the deployed URL, so
+measure it against the real service URL; the loopback measurement in README.md's "Known
+limitations" section (0.62-1.17 ms) is not a substitute for it, since network latency to
+a hosted service is not loopback. For the EC2 deployment that measurement was 570–700 ms
+from a US-based origin, almost all of it network distance to `ap-southeast-2` (see the
+README).
 
-## Rollback
+### Rollback
 
 Every pushed image tag stays in ECR until pruned, so rollback is just repointing the
 service at a previous tag — no new resources needed.
@@ -218,11 +245,11 @@ aws apprunner update-service --service-arn "$SERVICE_ARN" \
 (Typical output, not executed in this environment — no AWS credentials configured
 here.)
 
-## Cost
+### Cost
 
 App Runner's smallest instance (`0.25 vCPU` / `0.5 GB`) bills per-active-second while
-handling requests, plus a small always-on provisioned-capacity minimum — unlike
-opencv's Lambda Function URL, **App Runner is not scale-to-zero**; a running service
+handling requests, plus a small always-on provisioned-capacity minimum — unlike a Lambda
+Function URL, **App Runner is not scale-to-zero**; a running service
 costs something even at zero traffic. This is a real tradeoff being made for App
 Runner's simpler ECR-image deploy model, not something hidden from the submission.
 
@@ -230,19 +257,20 @@ Runner's simpler ECR-image deploy model, not something hidden from the submissio
 
 - **In-memory state, now observable once deployed.** README.md's "Known limitations"
   already states devices/proposals/audit entries live only for the server process's
-  lifetime and nothing is written back to disk. That was previously moot (the server
-  only ran locally); once #124 deploys this, a container restart or redeploy silently
-  loses all in-flight proposals and audit history for the first time in a way a demo
-  audience can actually observe.
+  lifetime and nothing is written back to disk. That was moot while the server only ran
+  locally; on a deployed server, a process restart or redeploy silently loses all
+  in-flight proposals and audit history, and every caller of the public URL shares the
+  same registry, proposals and audit log.
 - **No `/health` route.** `server/src/server.js` has no dedicated health endpoint, so
-  App Runner's `HealthCheckConfiguration` uses `Protocol=TCP` against the configured
+  App Runner's `HealthCheckConfiguration` in `deploy.sh` uses `Protocol=TCP` against the configured
   port rather than an HTTP path. `deploy.sh`'s `health_check_config` is the one line
   that changes once a real `/health` route exists.
-- **No auth.** SPEC.md §7 records `auth.js` as deferred; the deployed URL is reachable
-  by anyone who has it, same tradeoff README.md already states for the local server.
-- **This runbook still only deploys the MCP server, not the client.** #130 moved
-  `PLANNER=bedrock`'s AWS Bedrock call into `client/server.js` (a second, separate Node
-  process from the one this document deploys) — `iam-policy.json` above has no
+- **No auth.** OAuth 2.1 with PKCE (`auth.js`) was deliberately deferred; the deployed
+  URL is reachable by anyone who has it, same tradeoff README.md already states for the
+  local server.
+- **This runbook only deploys the MCP server, not the client.** `PLANNER=bedrock`'s AWS
+  Bedrock call lives in `client/server.js` (a second, separate Node process from the one
+  this document deploys) — `iam-policy.json` above has no
   `bedrock:InvokeModel` statement because nothing it provisions ever calls Bedrock. If
   the client is ever deployed too (as opposed to run locally, which is all this repo
   does today), whatever hosts it needs its own execution role carrying that permission —

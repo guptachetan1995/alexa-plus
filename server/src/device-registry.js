@@ -50,7 +50,7 @@ function computeStatePatch(device, action, params) {
 
 /**
  * View over the seeded device registry. Reads (`listDevices`/`getDevice`) never
- * mutate. `applyAction` (added by issue #36 — the propose/confirm/execute tools are
+ * mutate. `applyAction` (the propose/confirm/execute tools are
  * the only callers, and only after a confirmed proposal) is the one write path: it
  * replaces a device entry with a new, independently-frozen snapshot rather than
  * mutating fields in place, so any earlier snapshot a caller is still holding (e.g. an

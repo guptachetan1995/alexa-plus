@@ -1,9 +1,10 @@
-// The SPEC.md section 5 demo script, as data the scripted planner walks turn by turn.
+// The demo conversation (README "Demo walkthrough"), as data the scripted planner walks
+// turn by turn.
 // Device ids match the seeded registry in server/data/devices.json (read fresh, never
 // copied, since client/ cannot import server/ files).
 //
-// Issue #36 registered the server's remaining tools, so every tool call below is real
-// (mode: 'real') — there is nothing left to simulate. It also added a genuine
+// The server registers all eight tools, so every tool call below is real
+// (mode: 'real') — there is nothing left to simulate. The script also has a genuine
 // human-in-the-loop gate: a `kind: 'confirm'` turn pauses the whole conversation and
 // waits for planner.js's `onConfirmRequest` hook (wired to the UI's Confirm/Decline
 // buttons in app.js) to resolve with the person's actual decision. Nothing after that
@@ -14,8 +15,7 @@
 //
 // The script deliberately runs two propose/confirm cycles so the demo shows both
 // outcomes of the same gate: dimming the living room light is CONFIRMED and executed;
-// turning off the kitchen plug is DECLINED and left untouched (SPEC.md section 5's
-// issue #36 amendment).
+// turning off the kitchen plug is DECLINED and left untouched.
 
 export const CONVERSATION_SCRIPT = [
   {

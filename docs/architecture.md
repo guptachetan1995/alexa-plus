@@ -18,14 +18,14 @@ Two independent Node processes, one browser, and exactly one wire between them.
 graph TB
     subgraph browser["Browser"]
         UI["React UI<br/><code>client/src/app.js</code><br/>conversation + Confirm/Decline"]
-        PLAN["Scripted planner<br/><code>client/src/planner.js</code><br/>walks the SPEC.md §5 script"]
+        PLAN["Scripted planner<br/><code>client/src/planner.js</code><br/>walks the fixed demo script"]
         MCPC["MCP client<br/><code>client/src/mcp-client.js</code><br/>Streamable HTTP, 2025-11-25"]
         UI --> PLAN
         PLAN --> MCPC
     end
 
     subgraph cproc["Process 2 — client (npm start in client/, :5173)"]
-        STATIC["Static file server<br/><code>client/server.js</code><br/>zero dependencies, no bundler"]
+        STATIC["Static file server<br/><code>client/server.js</code><br/>no bundler, no build step"]
     end
 
     subgraph sproc["Process 1 — server (npm start, :3000)"]
@@ -67,6 +67,14 @@ the server, not one, and they mean different things.
 
 `client/` imports nothing from `server/` — it talks to it only over HTTP, which
 `verify.sh` enforces with a cross-import grep.
+
+The diagram shows the default, scripted planner. With `PLANNER=bedrock`,
+`client/src/bedrock-planner.js` replaces it: an Amazon Bedrock model (Converse API,
+tool-use loop) picks the next tool call, and `client/server.js` gains one extra route,
+`POST /bedrock/converse`, that makes the AWS call under Node so no AWS credential ever
+reaches the browser. Both arrows to the server stay exactly as drawn — the model's tool
+calls go through the same `McpHttpClient.callTool()`, and only the person's Confirm
+reaches `/proposals/:id/approve`. See the README's "PLANNER=bedrock" section.
 
 ---
 
@@ -136,8 +144,9 @@ stating rather than hiding. The guard is real (`tools.js` re-runs
 reached: `policy.js` is pure and stateless, and a proposal the policy denies is created
 `blocked_by_policy` and can never be approved, so no approved token can exist for an
 action the policy would refuse. The re-check is defence for a future in which policy
-becomes time- or state-dependent — the case SPEC.md §3 anticipates with time-based
-schedules and user overrides — at which point it becomes both reachable and testable.
+becomes time- or state-dependent — time-based schedules or user overrides, which the
+original design anticipated and the current policy does not implement — at which point
+it becomes both reachable and testable.
 The policy engine's own rules are unit-tested directly in `../server/test/policy.test.js`,
 and the scene-level "any blocked action blocks the whole scene" path in
 `../server/test/proposal-lifecycle.test.js`.
@@ -149,7 +158,7 @@ never be approved, so a denied action cannot reach a person as a confirmable cho
 
 ## 3. State and its lifetime
 
-Per SPEC.md §4, all state is in memory for the life of the server process.
+By design, all state is in memory for the life of the server process.
 
 | Thing | Lives in | Lifetime | Written by |
 |---|---|---|---|
@@ -180,10 +189,10 @@ each requirement. Sources:
 |---|---|
 | Streamable HTTP transport (the 2025-11-25 spec deprecated HTTP+SSE) | **Met.** `PROTOCOL_VERSION = '2025-11-25'` in `server/src/server.js`; `/mcp` answers POST, GET and DELETE, and session-lifecycle conformance is covered by `server/test/session-lifecycle.test.js`. Verified independently with the off-the-shelf MCP Inspector CLI, which lists all 8 tools. |
 | MCP introspection over JSON-RPC 2.0 discovers the tools | **Met.** `tools/list` returns 8 tools, each with a title, a description written for a model that cannot see the screen, and a JSON Schema generated from its Zod input schema (`server/test/tools-list.test.js`). |
-| Round-trip query latency under 500 ms | **Met on latency, not on hosting.** Measured `tools/call` round-trip on loopback: 0.62–1.17 ms across 5 samples. Every call resolves against an in-memory registry, so there is no network- or provider-bound step. But the server is not deployed to a public URL — see the limitation below. |
-| Reachable at a remote URL | **Met (#124).** Live at `http://16.176.3.215:3000/mcp` on AWS EC2 (`ap-southeast-2`). `createMcpExpressApp({ host: '0.0.0.0' })` opts out of the SDK's localhost-only Host allowlist that previously refused every non-local request — verified with a real `initialize` handshake returning `HTTP 200` and a correct `serverInfo`. Latency from the deploying session's US-based origin measured 570–700 ms (a `curl` timing breakdown attributes ~290 ms of that to the TCP connect round trip alone — real network distance to `ap-southeast-2`, not server processing); loopback `tools/call` latency is still 0.62–1.17 ms. |
-| OAuth 2.1 authorization-code flow with PKCE (S256) | **Not implemented.** This server requires no authentication at all, so nothing about the demo is gated behind an auth path that does not exist. SPEC.md §7 records `auth.js` as deliberately deferred. A real Alexa+ add-on would need it before account linking. |
-| Onboarding via the Alexa AI CLI (browser sign-in with Login with Amazon; `--no-browser` for headless) | **Owner step.** It authenticates against a developer account, which is a human-only action for this repo. |
+| Round-trip query latency under 500 ms | **Met by the server; end to end it depends on where the caller is.** Measured `tools/call` round-trip on loopback: 0.62–1.17 ms across 5 samples. Every call resolves against an in-memory registry, so there is no network- or provider-bound step. Against the deployed URL, network distance dominates — see the next row. |
+| Reachable at a remote URL | **Met.** Live at `http://16.176.3.215:3000/mcp` on AWS EC2 (`ap-southeast-2`). `createMcpExpressApp({ host: '0.0.0.0' })` opts out of the SDK's localhost-only Host allowlist that previously refused every non-local request — verified with a real `initialize` handshake returning `HTTP 200` and a correct `serverInfo`. Latency from the deploying session's US-based origin measured 570–700 ms (a `curl` timing breakdown attributes ~290 ms of that to the TCP connect round trip alone — real network distance to `ap-southeast-2`, not server processing); loopback `tools/call` latency is still 0.62–1.17 ms. |
+| OAuth 2.1 authorization-code flow with PKCE (S256) | **Not implemented.** This server requires no authentication at all, so nothing about the demo is gated behind an auth path that does not exist. An `auth.js` for it was planned and deliberately deferred. A real Alexa+ add-on would need it before account linking. |
+| Onboarding via the Alexa AI CLI (browser sign-in with Login with Amazon; `--no-browser` for headless) | **Not done for this entry.** It signs in to an Amazon developer account and needs the OAuth flow above for account linking; this entry takes the simulated-client route instead (next paragraph). |
 
 **What this entry does and does not claim.** It does not use the Alexa+ MCP Toolkit and
 does not ship an Agent Skill. It takes the other route the hackathon rules allow for this
@@ -201,8 +210,9 @@ Alexa device was in the loop.
 generated from the Mermaid blocks on this page:
 
 ```bash
-npx -y @mermaid-js/mermaid-cli -i docs/architecture.md -o docs/architecture.svg
+npx -y @mermaid-js/mermaid-cli@11.17.0 -i docs/architecture.md -o docs/architecture.svg
 ```
 
-Run it from `entries/alexa-plus/` after editing a diagram, so the images and the source
-never disagree.
+Run it from the project root (the directory holding `README.md`) after editing a
+diagram, so the images and the source never disagree. The version is pinned because a
+newer Mermaid can lay the same source out differently.

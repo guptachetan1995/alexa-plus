@@ -6,12 +6,12 @@
 //
 // This file calls tools through the exact same runConversation()/McpHttpClient path the
 // integration test drives (see client/test/) — there is no separate "UI-only" way to
-// reach the server, per CLAUDE.md's "Agent and human share one surface". The one
+// reach the server, so the agent and the person act on one surface. The one
 // exception, by design (see planner.js): minting or withholding a confirmation token
 // happens only through this file's Confirm/Decline buttons, via McpHttpClient's
 // approveProposal()/rejectProposal() — never through a tool call.
 //
-// #122: which planner runs is decided once, here, from `window.__ALEXA_PLUS_CONFIG__`
+// Which planner runs is decided once, here, from `window.__ALEXA_PLUS_CONFIG__`
 // (templated in by server.js — see there for why app.js never reads process.env
 // itself). The scripted path below is completely unchanged; PLANNER=bedrock only adds a
 // dynamic import of bedrock-planner.js, which is wired to the exact same onTurn/
@@ -170,7 +170,7 @@ function App() {
     h(
       'p',
       { className: 'subtitle' },
-      'Runs the SPEC.md demo conversation against the real MCP server below. Every tool ' +
+      'Runs the demo conversation against the real MCP server below. Every tool ' +
         'call shown here is a live server call; a proposed device action pauses the ' +
         'conversation until you Confirm or Decline it right here in the UI, and the ' +
         'server refuses execute_action/execute_scene calls that lack a valid, matching ' +

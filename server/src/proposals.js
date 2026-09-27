@@ -5,8 +5,8 @@ const { randomUUID } = require('node:crypto');
 /**
  * Tracks propose/confirm state for both single-device actions and multi-device scenes.
  *
- * SPEC.md's owner-only CLI verbs (`approve <proposal_id>`, `reject <proposal_id>`) are
- * "Never Registered on Agent" — this entry has no CLI, so `approve`/`reject` are called
+ * The owner-only decisions (`approve <proposal_id>`, `reject <proposal_id>`) are never
+ * registered on the agent. This entry has no CLI, so `approve`/`reject` are called
  * only from the two owner-only REST routes in server.js (the client's Confirm/Decline
  * buttons hit those directly; no MCP tool wraps them, and no tool call can reach them).
  * `approve()` is the ONLY method that ever sets a `confirmation_token` — this is what

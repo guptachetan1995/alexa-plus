@@ -1,7 +1,7 @@
 # Product feedback — alexa-plus
 
 Hackathon submission's graded feedback field, covering every tool/API/SDK the
-`entries/alexa-plus/README.md` setup path (`npm install`, `npm start`, `npm test`,
+[README](../README.md) setup path (`npm install`, `npm start`, `npm test`,
 `npm run lint`, the client's own `npm install`/`npm start`/`npm test`, and the
 "Inspecting with an off-the-shelf MCP client" section) names or depends on. Each entry
 gives: what it was for, what worked, what needs work, onboarding, and whether we'd
@@ -30,8 +30,8 @@ host validation apply to the *entire* returned Express app, not just the paths t
 itself registers, with no docstring warning either way. Both required reading the
 package's own source rather than its published docs/types.
 
-**Onboarding:** Fast to a first working tool call once the two-tool scaffold existed
-(see PR #75), but the docs alone are not enough to get a cross-origin browser client or
+**Onboarding:** Fast to a first working tool call once the two-tool scaffold existed,
+but the docs alone are not enough to get a cross-origin browser client or
 extra REST routes working correctly on the first try — both required source-diving.
 
 **Would build again:** Yes. It is the only complete reference implementation of the
@@ -44,7 +44,7 @@ narrow enough to work around in place.
 
 **What for:** The HTTP framework underlying `createMcpExpressApp()`'s returned `app`,
 and the host for this entry's two non-MCP, owner-only REST routes
-(`POST /proposals/:id/approve`, `POST /proposals/:id/reject`) added in PR #81.
+(`POST /proposals/:id/approve`, `POST /proposals/:id/reject`).
 
 **What worked:** Express 5's async-handler support (no `express-async-handler` shim
 needed for a rejected promise inside a route to become a proper error response) and its
@@ -92,8 +92,8 @@ API read naturally from the SDK's own tool-registration examples.
 **What for:** `npm run lint` (`eslint server`), the lint gate `verify.sh` and the
 README's own "Lint" section both depend on.
 
-**What worked:** Flat-config (`eslint.config.js`) at the entry root applied cleanly to
-`server/` with no per-file overrides needed; `npm run lint` came back clean on every PR
+**What worked:** Flat-config (`eslint.config.js`) at the project root applied cleanly to
+`server/` with no per-file overrides needed; `npm run lint` came back clean on every change
 in this entry without special-casing.
 
 **What needs work:** Nothing entry-specific — this was a config-once, forget-it
@@ -119,7 +119,7 @@ in-process Express app via supertest, with no flaky network binding needed.
 `--testPathPatterns` (singular → plural) as a hard error with no deprecated-alias grace
 period — every piece of Jest documentation and tutorial still current elsewhere uses the
 old singular name, and the new name is undiscoverable except by reading the error
-message it throws (logged in `friction-log.md` entry 1, PR #75).
+message it throws (logged in `friction-log.md` entry 1).
 
 **Onboarding:** Otherwise ordinary for anyone who has used Jest, but that one renamed
 flag is a guaranteed first-run stumble for anyone following existing Jest tutorials
@@ -158,11 +158,12 @@ HTTP-assertion layer over Express should.
 demo script.
 
 **What worked:** The import-map approach genuinely delivers on "no bundler, no build
-step" — `client/`'s `npm install` is a documented no-op, and `npm start` just serves
-static files. For a demo-scripted UI with a small, fixed component tree, this was
+step" — nothing is compiled, and `npm start` just serves static files (`client/`'s
+`npm install` only fetches the optional Bedrock SDK, which runs server-side under
+`PLANNER=bedrock` and never reaches the browser). For a demo-scripted UI with a small, fixed component tree, this was
 strictly simpler than wiring a bundler for one page.
 
-**What needs work:** The approach only stays simple because the client's dependency
+**What needs work:** The approach only stays simple because the browser-side dependency
 list is exactly one library; it would not scale past a couple of CDN-loaded packages
 before import-map version pinning and CORS-for-ESM-imports become their own
 maintenance surface.
@@ -180,7 +181,7 @@ anything bigger.
 **What for:** The README's "Inspecting with an off-the-shelf MCP client" section — an
 independent, off-the-shelf way to list and call tools against the running server
 without any custom client code, used to capture the real (non-fabricated) `tools/list`
-and `tools/call` transcripts included in PR #75.
+and `tools/call` transcripts shown in the README.
 
 **What worked:** `npx -y @modelcontextprotocol/inspector --cli <url> --method <m>`
 worked against the Streamable HTTP endpoint on the first try, with no server-side

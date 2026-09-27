@@ -1,34 +1,33 @@
 # Friction log — alexa-plus (consolidated)
 
-Consolidates every friction-log entry appended to this file across the three build
-goals that shipped the server and client (issues #34, #35, #36), one section per goal,
-in the hackathon's graded feedback format: task / steps / expected vs. actual /
-severity / workaround / suggestion. Every entry below is reproduced from this file's own
-git history verbatim in substance (only the field labels are normalized to the six
-above — "Expected" and "Actual" are merged into one "Expected vs. actual" field per
-entry); none are invented, added, or paraphrased away from what each goal originally
-recorded.
+Consolidates every friction-log entry recorded during the three build steps that
+shipped the server and client, one section per step, in the hackathon's graded feedback
+format: task / steps / expected vs. actual / severity / workaround / suggestion. Each
+entry was written while the step was being built and is reproduced here in substance
+(only the field labels are normalized to the six above — "Expected" and "Actual" are
+merged into one "Expected vs. actual" field per entry); none are invented, added, or
+paraphrased away from what was originally recorded.
 
-**Entry count note:** this file's real git history (`git log -p -- entries/alexa-plus/docs/friction-log.md`)
-contains exactly four entries in total — two from issue #34, one from issue #35, one
-from issue #36. That is fewer than this consolidation issue's own "≥5 entries" target;
-per this issue's explicit "do not invent entries" instruction, no fifth entry has been
-fabricated to reach that number. All four genuine entries are consolidated below.
+**Entry count note:** the build recorded exactly four entries in total — two in the
+server scaffold step, one in the client step, one in the propose/confirm step. That is
+fewer than the five the consolidation aimed for; no fifth entry was invented to reach
+that number. All four are below. (This repository is a published copy of the project,
+so its own git history starts at publication and does not show when each entry was
+written.)
 
 ---
 
-## Issue #34 — MCP server scaffold with two tools and conformance tests (PR #75)
+## Server scaffold — two tools and conformance tests
 
 ### 1. Jest 30 silently renamed `--testPathPattern` to `--testPathPatterns`
 
-**Task:** Wire up `npm test` to run only `entries/alexa-plus/server/test/**` (the
-entry's `package.json` is at `entries/alexa-plus/`, one level above `server/`, so the
+**Task:** Wire up `npm test` to run only `server/test/**` (the project's
+`package.json` is at the project root, one level above `server/`, so the
 test runner needs a path filter rather than relying on Jest's default "everything
 under the CWD" discovery).
 
 **Steps:**
-1. `npm install jest@^30` (the version resolved from SPEC.md's "Jest" test-runner pin,
-   pulling latest 30.x).
+1. `npm install jest@^30` (the project's chosen test runner, pulling latest 30.x).
 2. Set `"test": "jest --testPathPattern=server/test"` in `package.json` — this is the
    flag name in every piece of Jest documentation and tutorial still current as of
    training-time knowledge, and in Jest's own CLI docs page for versions ≤29.
@@ -96,12 +95,12 @@ example.
 
 ---
 
-## Issue #35 — simulated Alexa+ web client calling the server (PR #79)
+## Client — simulated Alexa+ web client calling the server
 
 ### 3. `createMcpExpressApp()` ships no CORS handling, and the failure is silent in a way that hides the real cause
 
-**Task:** Wire the simulated Alexa+ client (`client/`, its own origin/port, per issue
-#35) to call the MCP server (a different origin/port) straight from the browser with
+**Task:** Wire the simulated Alexa+ client (`client/`, its own origin/port) to call the
+MCP server (a different origin/port) straight from the browser with
 `fetch`, the same way the integration test's Node client already did successfully.
 
 **Steps:**
@@ -116,8 +115,8 @@ HTTP, no shared code). Actual: the UI just showed `Error: Failed to fetch` — `
 own error carries no detail. The real cause only appeared in the browser console: a
 CORS preflight (`OPTIONS /mcp`) got back a plain Express 404 with no
 `Access-Control-Allow-Origin` header, because `@modelcontextprotocol/sdk`'s
-`createMcpExpressApp()` (used by `server/src/server.js`, built in issue #34) sets up
-JSON body parsing and DNS-rebinding host-header validation but no CORS handling at
+`createMcpExpressApp()` (used by `server/src/server.js`, built in the server scaffold
+step) sets up JSON body parsing and DNS-rebinding host-header validation but no CORS handling at
 all — reasonable for a same-origin MCP host, but this entry's own demo is explicitly
 two separate processes on two separate ports.
 
@@ -142,13 +141,14 @@ mode in particular is invisible until you already know to look for it.
 
 ---
 
-## Issue #36 — mutating tools as propose/confirm pairs with client confirmation (PR #81)
+## Propose/confirm — mutating tools as propose/confirm pairs with client confirmation
 
 ### 4. `createMcpExpressApp()`'s "pre-configured for MCP servers" middleware is undocumented as applying to every route on the returned app, not just `/mcp`
 
 **Task:** Add two new, non-MCP REST routes (`POST /proposals/:id/approve`, `POST
-/proposals/:id/reject` — issue #36's owner-only "Confirm control" surface, since
-SPEC.md's CLI verbs have no CLI to live in here) onto the exact same Express `app`
+/proposals/:id/reject` — the owner-only "Confirm control" surface; the design's
+owner-only approve/reject CLI verbs had no CLI to live in, since this entry's client is a
+web page) onto the exact same Express `app`
 object `server.js` already builds via `createMcpExpressApp()` and mounts `/mcp` on,
 rather than starting a second app/port.
 
@@ -194,9 +194,9 @@ way, but only if a reader can get it without opening the package's source.
 
 ## Index by severity
 
-| Severity | Entry | Issue | PR |
-|---|---|---|---|
-| Medium | 3. `createMcpExpressApp()` ships no CORS handling, failure is silent | #35 | #79 |
-| Low | 1. Jest 30 renamed `--testPathPattern` to `--testPathPatterns` | #34 | #75 |
-| Low | 2. SDK reports unknown tool as a tool result, not a protocol error | #34 | #75 |
-| Low | 4. `createMcpExpressApp()` middleware applies repo-wide, undocumented | #36 | #81 |
+| Severity | Entry | Build step |
+|---|---|---|
+| Medium | 3. `createMcpExpressApp()` ships no CORS handling, failure is silent | client |
+| Low | 1. Jest 30 renamed `--testPathPattern` to `--testPathPatterns` | server scaffold |
+| Low | 2. SDK reports unknown tool as a tool result, not a protocol error | server scaffold |
+| Low | 4. `createMcpExpressApp()` middleware applies app-wide, undocumented | propose/confirm |

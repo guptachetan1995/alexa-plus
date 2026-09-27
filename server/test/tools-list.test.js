@@ -4,7 +4,7 @@ const { createApp } = require('../src/server.js');
 const { postRpc, initializeSession } = require('./helpers.js');
 
 describe('tools/list', () => {
-  test('lists exactly the eight SPEC.md tools, each with a real description and input schema', async () => {
+  test('lists exactly the eight tools, each with a real description and input schema', async () => {
     const app = createApp();
     const { sessionId } = await initializeSession(app);
 
@@ -31,8 +31,8 @@ describe('tools/list', () => {
     for (const tool of tools) {
       expect(typeof tool.description).toBe('string');
       expect(tool.description.length).toBeGreaterThan(20);
-      // Every tool description documents what it does NOT do (CLAUDE.md "Tools are
-      // documentation" watch) — assert the negative-space language is actually present.
+      // A tool description is all a model reads, so each one must say what the tool does
+      // NOT do — assert the negative-space language is actually present.
       expect(tool.description).toMatch(/does NOT/);
       expect(tool.inputSchema).toBeTruthy();
       expect(tool.inputSchema.type).toBe('object');

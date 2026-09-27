@@ -9,7 +9,7 @@
 // extensions, not a general-purpose static file server — since this page is the whole
 // deliverable and nothing outside client/ needs to be reachable through it.
 //
-// #130: this is also the ONE place in the whole client that imports the AWS SDK or
+// This is also the ONE place in the whole client that imports the AWS SDK or
 // resolves an AWS credential. `POST /bedrock/converse` proxies the Bedrock Converse call
 // for bedrock-planner.js's browser-side tool-use loop — a real browser tab cannot
 // resolve the SDK's bare import (no bundler here) and, even patched around, the SDK's
@@ -31,10 +31,10 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const THIS_FILE = fileURLToPath(import.meta.url);
 const PORT = process.env.PORT ? Number(process.env.PORT) : 5173;
 // Server-side only — the browser no longer needs to know which AWS region is in play,
-// since it never constructs an AWS client itself any more (#130).
+// since it never constructs an AWS client itself any more.
 const REGION = process.env.AWS_REGION || 'ap-southeast-2';
 
-// #122: which planner app.js runs, read once at server startup — never inside a
+// Which planner app.js runs, read once at server startup — never inside a
 // request handler, and never by app.js reaching for process.env, which does not exist
 // in a browser. No AWS credentials are read or embedded here or anywhere in this
 // template — `modelId` just tells the browser which model name to display/request.

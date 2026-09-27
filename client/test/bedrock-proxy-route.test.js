@@ -1,4 +1,4 @@
-// Tests server.js's POST /bedrock/converse route in isolation (#130): a fake
+// Tests server.js's POST /bedrock/converse route in isolation: a fake
 // bedrockClient is injected via createServer({ bedrockClient }), so this suite never
 // needs a real AWS credential and never makes a real network call to AWS — the whole
 // point of moving the AWS SDK here (out of the browser) was to make this testable the

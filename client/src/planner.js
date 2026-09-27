@@ -1,8 +1,8 @@
-// The scripted planner (SPEC.md section 10: deterministic by default, no LLM required).
+// The scripted planner, the default (deterministic, no LLM required).
 // It walks CONVERSATION_SCRIPT turn by turn and, for any turn with a tool call, always
 // routes it through the SAME McpHttpClient.callTool() used everywhere else in this
-// client — the UI never calls a tool by any other path (CLAUDE.md "Agent and human
-// share one surface"). The one deliberate exception is a `kind: 'confirm'` turn: there
+// client — the UI never calls a tool by any other path, so the agent and the person
+// act on one surface. The one deliberate exception is a `kind: 'confirm'` turn: there
 // the planner calls McpHttpClient's approveProposal()/rejectProposal(), which are plain
 // REST calls to the server's owner-only /proposals routes, never tools/call — because
 // minting (or withholding) a confirmation token is the PERSON's decision, made through
@@ -11,10 +11,9 @@
 // only way that decision reaches the planner — it is awaited exactly where a real
 // person would need to actually click something.
 //
-// An optional LLM planner may replace turn selection later behind an env var per
-// SPEC.md section 10; it would still have to call runTurn() below to reach a tool, and
-// still have to go through the same confirm gate to mint a token, so both
-// chokepoint guarantees hold regardless of which planner is active.
+// bedrock-planner.js (PLANNER=bedrock) replaces turn selection with a model, but it
+// reaches tools through the same McpHttpClient.callTool() and mints tokens only through
+// the same confirm gate, so both chokepoint guarantees hold whichever planner is active.
 
 import { CONVERSATION_SCRIPT } from './conversation-script.js';
 

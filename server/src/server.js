@@ -47,10 +47,10 @@ function createApp({
   // default (via its `host` option, independent of what this process actually
   // binds to). `host: '0.0.0.0'` opts out of that automatic allowlist, the same
   // tradeoff already made for CORS: no auth, no origin allowlist, so this one
-  // check wasn't real protection — just this SDK helper's localhost default (#124).
+  // check wasn't real protection — just this SDK helper's localhost default.
   const app = createMcpExpressApp({ host: '0.0.0.0' });
 
-  // The simulated Alexa+ client (issue #35) runs on its own origin/port and talks to
+  // The simulated Alexa+ client runs on its own origin/port and talks to
   // this server only over HTTP, so cross-origin fetches need explicit CORS — including
   // exposing Mcp-Session-Id, which a browser's fetch() otherwise hides on cross-origin
   // responses even though the header is present on the wire.
@@ -68,7 +68,7 @@ function createApp({
 
   // Session id -> live transport. A session begins at `initialize` and ends on
   // DELETE or transport close; there is no persistence across process restarts,
-  // matching SPEC.md's "state lives in memory during a run" data model.
+  // by design: all state lives in memory for the life of the process.
   const transports = {};
 
   const mcpPostHandler = async (req, res) => {
@@ -155,8 +155,8 @@ function createApp({
   app.get('/mcp', mcpGetHandler);
   app.delete('/mcp', mcpDeleteHandler);
 
-  // Owner-only proposal decisions — SPEC.md's `approve`/`reject` CLI verbs, adapted to
-  // this entry's web client since there is no CLI. These are plain REST routes, NOT
+  // Owner-only proposal decisions — the `approve`/`reject` verbs, as REST routes because
+  // this entry's client is a web page, not a CLI. These are plain REST routes, NOT
   // MCP tools: no agent tool call can reach them, which is what makes the confirmation
   // token "minted only by the client's Confirm control" true rather than aspirational.
   app.post('/proposals/:proposalId/approve', (req, res) => {

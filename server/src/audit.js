@@ -3,7 +3,7 @@
 const { randomUUID } = require('node:crypto');
 
 /**
- * In-memory, append-only audit trail. Matches SPEC.md's `AuditEntry` data model. There
+ * In-memory, append-only audit trail, one AuditEntry per executed device action. There
  * is no delete/redact path on purpose — read_audit_log (tools.js) is the only reader.
  */
 class AuditLog {

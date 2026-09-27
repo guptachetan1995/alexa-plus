@@ -3,8 +3,8 @@
 // against the wire protocol (not imported from server/), so it works identically from a
 // browser <script type="module"> and from Node's test runner — both provide global
 // fetch. This is the ONE place either the UI or the planner sends a tool call through;
-// neither gets its own path to the network (see CLAUDE.md "Agent and human share one
-// surface").
+// neither gets its own path to the network, so the agent and the person act on one
+// surface.
 
 const PROTOCOL_VERSION = '2025-11-25';
 const MCP_ACCEPT = 'application/json, text/event-stream';
@@ -46,10 +46,10 @@ export class McpHttpClient {
   /**
    * The owner-only "Confirm control" surface: plain REST POSTs to the server's
    * /proposals/:id/approve|reject routes — NOT tools/call. These are never routed
-   * through callTool() on purpose (see CLAUDE.md's "Agent and human share one surface"
-   * — this is the one place that guarantee does NOT apply, because minting a
-   * confirmation token is the person's decision, never the agent's). Only ever called
-   * from the UI's Confirm/Decline button handlers in app.js.
+   * through callTool() on purpose (this is the one place the shared-surface guarantee
+   * does NOT apply, because minting a confirmation token is the person's decision,
+   * never the agent's). Only ever called from the UI's Confirm/Decline button handlers
+   * in app.js.
    */
   async approveProposal(proposalId) {
     return this._proposalDecision(proposalId, 'approve');
