@@ -234,6 +234,11 @@ npx -y @modelcontextprotocol/inspector --cli http://127.0.0.1:3000/mcp --method 
 npx -y @modelcontextprotocol/inspector --cli http://127.0.0.1:3000/mcp --method tools/call --tool-name get_device_state --tool-arg device_id=dev_thermostat_1
 ```
 
+The same commands work against the live deployment: replace `http://127.0.0.1:3000/mcp`
+with `http://16.176.3.215:3000/mcp`. It is an MCP endpoint, not a web page, so opening it
+in a browser returns HTTP 400 (`Missing Mcp-Session-Id header`): every MCP session starts
+with an `initialize` POST, which the Inspector sends for you.
+
 `tools/list` against a live server returns all eight tools:
 
 ```

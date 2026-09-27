@@ -421,8 +421,15 @@ limitations rather than claimed (9 latency from distant testers, 10 OAuth).**
 ## Submission status
 
 Submitted on Devpost: https://devpost.com/software/smart-home-agent. The project page
-embeds the [demo video](#demo-video) and links this repository and the live MCP URL
-(`http://16.176.3.215:3000/mcp`). The sections of this document are the source text for
+embeds the [demo video](#demo-video), and its story opens with this repository and the
+live MCP URL (`http://16.176.3.215:3000/mcp`), saying plainly that it is an MCP endpoint a
+client connects to, not a page a browser opens. "Try it out" links the repository, the live
+MCP URL and the README's
+[Inspector section](../README.md#inspecting-with-an-off-the-shelf-mcp-client). A 3:2
+thumbnail shows the Confirmation needed panel, and the gallery holds the two architecture
+diagrams plus five captioned demo frames: a proposal awaiting Confirm, Confirm then
+`execute_action`, a decline with the audit log, a token-less `execute_action` refused, and
+the server test run. The sections of this document are the source text for
 the form's fields: the text description, Built With, product feedback (`feedback.md`),
 friction log (`friction-log.md`), feature requests, the pre-existing-work disclosure, and
 the track and mini-challenge fields.
