@@ -139,7 +139,7 @@ Alexa surface itself is simulated, and no Alexa device was in the loop.
 
 `model-context-protocol` · `mcp` · `streamable-http` · `json-rpc` · `node.js` ·
 `javascript` · `express.js` · `react` · `zod` · `jest` · `supertest` · `eslint` · `npm` ·
-`html` · `css` · `alexa`
+`html` · `css` · `alexa` · `amazon-web-services` · `amazon-bedrock` · `amazon-ec2`
 
 Versions are pinned in [`../package.json`](../package.json) and
 [`../client/package.json`](../client/package.json):
@@ -429,7 +429,10 @@ MCP URL and the README's
 thumbnail shows the Confirmation needed panel, and the gallery holds the two architecture
 diagrams plus five captioned demo frames: a proposal awaiting Confirm, Confirm then
 `execute_action`, a decline with the audit log, a token-less `execute_action` refused, and
-the server test run. The sections of this document are the source text for
+the server test run. On 2026-09-27 the story's closing section, a first-draft paragraph
+saying no AWS service was used, was replaced with the AWS services above (Bedrock, EC2)
+and a real "What's next" (HTTPS + OAuth onboarding, a real Alexa+ surface, persistence),
+and the three AWS tags were added. The sections of this document are the source text for
 the form's fields: the text description, Built With, product feedback (`feedback.md`),
 friction log (`friction-log.md`), feature requests, the pre-existing-work disclosure, and
 the track and mini-challenge fields.
