@@ -22,6 +22,124 @@ which refused every request to the instance's public IP with `HTTP 403 Invalid H
 that allowlist (see [Privacy and security notes](../README.md#privacy-and-security-notes)
 in the README for the tradeoff).
 
+**Which build it runs.** The instance runs the code as it was on 2026-09-11. Everything
+added since — the owner key on `approve`/`reject`, the `/proposals/*` origin allowlist,
+and the tool annotations — reaches the public host only when it is redeployed with the
+steps below. Until then its approve route is unauthenticated.
+
+## Redeploying the EC2 server with the owner key
+
+Done by the owner, in the AWS console, after the new code is in the public repository.
+Nothing here creates a resource or costs anything beyond the running instance.
+
+1. **Open a shell on the instance.** EC2 console, region `ap-southeast-2` → Instances →
+   the instance whose public IPv4 is `16.176.3.215` → **Connect** → *EC2 Instance
+   Connect* → **Connect**. (If the console says Instance Connect cannot reach it, the
+   security group has no SSH rule for Instance Connect; use *Session Manager* if the
+   instance has an SSM role, or add the rule the console suggests and remove it after.)
+   Do not stop and start the instance: without an Elastic IP its public IP would change.
+
+2. **Find how the server was started** (the launch was done by hand in the console, so
+   this is read off the instance rather than assumed):
+
+   ```bash
+   ps -eo pid,user,args | grep '[s]erver/src/server.js'
+   sudo ls -l /proc/<pid>/cwd                   # the directory it runs from
+   systemctl list-units --type=service --all | grep -iE 'alexa|mcp|node'
+   sudo cat /var/lib/cloud/instance/user-data.txt 2>/dev/null   # the launch-time script, if any
+   node --version                               # the server needs 20 or newer
+   ```
+
+3. **Stop it.** `sudo systemctl stop <unit>` if step 2 found a unit, otherwise
+   `sudo kill <pid>`.
+
+4. **Update the code** in the directory from step 2 (if it is not a git clone, clone
+   `https://github.com/guptachetan1995/alexa-plus` fresh and use that directory):
+
+   ```bash
+   cd <dir> && git pull && npm ci --omit=dev
+   ```
+
+5. **Choose the owner key and keep it out of shell history.** Generate one on your own
+   machine (`openssl rand -hex 24`), store it in your password manager, then on the
+   instance:
+
+   ```bash
+   read -rsp 'Owner key: ' OWNER_KEY; echo
+   printf 'OWNER_KEY=%s\nPORT=3000\n' "$OWNER_KEY" | sudo tee /etc/alexa-plus.env >/dev/null
+   sudo chmod 600 /etc/alexa-plus.env; unset OWNER_KEY
+   ```
+
+6. **Run it as a service**, so it survives a reboot and the key stays in a root-only file:
+
+   ```bash
+   sudo tee /etc/systemd/system/alexa-plus.service >/dev/null <<UNIT
+   [Unit]
+   Description=alexa-plus MCP server
+   After=network-online.target
+
+   [Service]
+   WorkingDirectory=$(pwd)
+   EnvironmentFile=/etc/alexa-plus.env
+   ExecStart=$(command -v node) server/src/server.js
+   Restart=on-failure
+   User=$(whoami)
+
+   [Install]
+   WantedBy=multi-user.target
+   UNIT
+   sudo systemctl daemon-reload && sudo systemctl enable --now alexa-plus
+   sudo journalctl -u alexa-plus -n 5 --no-pager   # "listening on ...:3000/mcp", no OWNER_KEY warning
+   ```
+
+   (If step 2 found an existing unit, disable it first — `sudo systemctl disable --now
+   <unit>` — so two servers do not race for port 3000.)
+
+7. **Verify from anywhere.** An approve call for a proposal that does not exist mints
+   nothing on either build, and its status code tells the builds apart: the old build
+   answers `409` (unknown proposal), the new one `401` (no owner key).
+
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}\n' -X POST http://16.176.3.215:3000/proposals/prop_check/approve
+   # expect 401
+   npx -y @modelcontextprotocol/inspector --cli http://16.176.3.215:3000/mcp --method tools/list
+   # expect the 8 tools, each now with "annotations"
+   ```
+
+Once step 7 shows `401`, the README's "The live server runs the build from before the
+owner key" limitation is no longer true and comes out, and this section's "Which build it
+runs" paragraph changes to say so.
+
+## HTTPS without a new account (not done)
+
+The endpoint is plain HTTP. An HTTPS URL is possible without any new account: the
+hostname `16-176-3-215.sslip.io` already resolves to this IP (sslip.io needs no signup),
+and Caddy obtains a Let's Encrypt certificate for it automatically over ACME (no signup
+either). The steps, for an owner-present session:
+
+1. In the instance's security group, add inbound TCP 80 and 443 from `0.0.0.0/0`
+   (port 80 is needed for the certificate challenge).
+2. On the instance, download the `linux_amd64` release of Caddy from
+   `https://github.com/caddyserver/caddy/releases` and put this in a `Caddyfile`:
+
+   ```
+   16-176-3-215.sslip.io {
+       reverse_proxy 127.0.0.1:3000
+   }
+   ```
+
+3. Run it (`sudo ./caddy run --config Caddyfile`, or as a service like step 6 above) and
+   check `npx -y @modelcontextprotocol/inspector --cli https://16-176-3-215.sslip.io/mcp
+   --method tools/list`.
+
+Why it has not been done: it is a change on the live host (a security-group edit and new
+software on the instance), which is the owner's step, and it depends on a third-party
+DNS name. A hosted copy of the web client (for example on GitHub Pages) is a separate
+question with a different answer: a public page cannot Confirm without the owner key,
+and handing the key to every visitor would undo it, while every visitor would also share
+the one live home. The public way to try the server stays the Inspector command in the
+README.
+
 ## The App Runner runbook
 
 The server ships as a container image behind AWS App Runner: App Runner pulls from a
@@ -265,9 +383,9 @@ Runner's simpler ECR-image deploy model, not something hidden from the submissio
   App Runner's `HealthCheckConfiguration` in `deploy.sh` uses `Protocol=TCP` against the configured
   port rather than an HTTP path. `deploy.sh`'s `health_check_config` is the one line
   that changes once a real `/health` route exists.
-- **No auth.** OAuth 2.1 with PKCE (`auth.js`) was deliberately deferred; the deployed
-  URL is reachable by anyone who has it, same tradeoff README.md already states for the
-  local server.
+- **No user auth.** OAuth 2.1 with PKCE (`auth.js`) was deliberately deferred; the MCP
+  endpoint is reachable by anyone who has the URL, and the only credential is the owner
+  key on `approve`/`reject` (once redeployed, above).
 - **This runbook only deploys the MCP server, not the client.** `PLANNER=bedrock`'s AWS
   Bedrock call lives in `client/server.js` (a second, separate Node process from the one
   this document deploys) — `iam-policy.json` above has no

@@ -21,6 +21,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { McpHttpClient } from './mcp-client.js';
 import { runConversation } from './planner.js';
+import { devicesFromTurns, summarizeState, summarizeResult } from './device-state.js';
 
 const h = React.createElement;
 const DEFAULT_SERVER_URL = 'http://127.0.0.1:3000/mcp';
@@ -72,30 +73,57 @@ function ConfirmOutcome({ turn }) {
   );
 }
 
+// Arguments and results stay one click away: the conversation reads as a conversation,
+// and the device panel above it shows what the results mean. A refusal's reason is the
+// exception — it is shown in full, because it is the point of that turn.
 function ToolPanel({ tool }) {
   const isError = Boolean(tool.result?.isError);
   const badge = isError
     ? h('span', { className: 'badge badge-error' }, 'REFUSED')
     : h('span', { className: 'badge badge-real' }, 'REAL — server call');
-  const resultText = isError
-    ? tool.result?.content?.[0]?.text ?? 'Refused (no reason text returned).'
-    : JSON.stringify(tool.result?.structuredContent ?? tool.result, null, 2);
 
   return h(
     'div',
     { className: `tool-panel${isError ? ' tool-panel-error' : ''}` },
     h('div', { className: 'tool-panel-head' }, h('code', null, tool.name), badge),
+    isError
+      ? h('p', { className: 'refusal-text' }, tool.result?.content?.[0]?.text ?? 'Refused (no reason text returned).')
+      : h('p', { className: 'result-summary' }, summarizeResult(tool.name, tool.result?.structuredContent)),
     h(
       'details',
-      { open: true },
+      null,
       h('summary', null, 'arguments'),
       h('pre', null, JSON.stringify(tool.args, null, 2))
     ),
-    h(
-      'details',
-      { open: true },
-      h('summary', null, isError ? 'refusal reason' : 'result'),
-      h('pre', null, resultText)
+    isError
+      ? null
+      : h(
+          'details',
+          null,
+          h('summary', null, 'result'),
+          h('pre', null, JSON.stringify(tool.result?.structuredContent ?? tool.result, null, 2))
+        )
+  );
+}
+
+/** One tile per device the agent has read, re-rendered from each real tool result. */
+function DevicePanel({ turns }) {
+  const { devices, changed } = devicesFromTurns(turns);
+  if (devices.length === 0) return null;
+  return h(
+    'div',
+    { className: 'devices', 'aria-label': 'Device state' },
+    devices.map((device) =>
+      h(
+        'div',
+        {
+          key: device.device_id,
+          className: `device-tile${changed.includes(device.device_id) ? ' device-tile-changed' : ''}`,
+        },
+        h('div', { className: 'device-name' }, device.name),
+        h('div', { className: 'device-room' }, device.room || ''),
+        h('div', { className: 'device-state' }, summarizeState(device))
+      )
     )
   );
 }
@@ -108,7 +136,7 @@ function Turn({ turn }) {
     'div',
     { className: `turn turn-${turn.speaker}` },
     h('div', { className: 'turn-speaker' }, turn.speaker === 'user' ? 'You' : 'Alexa+ Agent'),
-    h('div', { className: 'turn-text' }, turn.text),
+    turn.text ? h('div', { className: 'turn-text' }, turn.text) : null,
     turn.tool ? h(ToolPanel, { tool: turn.tool }) : null
   );
 }
@@ -138,7 +166,7 @@ function App() {
     setError(null);
     setPendingConfirm(null);
     setStatus('running');
-    const client = new McpHttpClient(serverUrl);
+    const client = new McpHttpClient(serverUrl, { ownerKey: CONFIG.ownerKey });
     try {
       if (CONFIG.planner === 'bedrock') {
         const { runBedrockConversation } = await import('./bedrock-planner.js');
@@ -193,7 +221,15 @@ function App() {
         status === 'running' ? 'Running…' : 'Start demo conversation'
       )
     ),
+    CONFIG.ownerKey
+      ? null
+      : h(
+          'div',
+          { className: 'error' },
+          'No owner key: this client was started without OWNER_KEY, so the server will refuse Confirm and Decline.'
+        ),
     error ? h('div', { className: 'error' }, `Error: ${error}`) : null,
+    h(DevicePanel, { turns }),
     h(
       'div',
       { className: 'conversation' },

@@ -55,6 +55,7 @@ async function waitForServer(url, timeoutMs = 8000) {
 
 let serverProcess;
 let serverUrl;
+const OWNER_KEY = 'bedrock-test-owner-key';
 
 // A fresh server per test (rather than one shared across the whole file, like
 // conversation.integration.test.js does) so audit-log-count and device-state
@@ -63,7 +64,7 @@ beforeEach(async () => {
   const port = await getFreePort();
   serverUrl = `http://127.0.0.1:${port}/mcp`;
   serverProcess = spawn(process.execPath, [SERVER_ENTRY], {
-    env: { ...process.env, PORT: String(port) },
+    env: { ...process.env, PORT: String(port), OWNER_KEY },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   await waitForServer(serverUrl);
@@ -131,7 +132,7 @@ function spyOnCallTool(client) {
 }
 
 test('listTools() on the real server returns all 8 registered tools', async () => {
-  const client = new McpHttpClient(serverUrl);
+  const client = new McpHttpClient(serverUrl, { ownerKey: OWNER_KEY });
   await client.initialize();
   const { tools } = await client.listTools();
   assert.deepEqual(
@@ -151,7 +152,7 @@ test('listTools() on the real server returns all 8 registered tools', async () =
 });
 
 test('confirm -> execute: an adversarial model trying to supply its own confirmation_id/device_id is ignored', async () => {
-  const client = new McpHttpClient(serverUrl);
+  const client = new McpHttpClient(serverUrl, { ownerKey: OWNER_KEY });
   const calls = spyOnCallTool(client);
 
   let realConfirmationId;
@@ -206,7 +207,7 @@ test('confirm -> execute: an adversarial model trying to supply its own confirma
 });
 
 test('decline never reaches execute_action, even when the model tries anyway', async () => {
-  const client = new McpHttpClient(serverUrl);
+  const client = new McpHttpClient(serverUrl, { ownerKey: OWNER_KEY });
   const calls = spyOnCallTool(client);
 
   const steps = [
@@ -246,7 +247,7 @@ test('decline never reaches execute_action, even when the model tries anyway', a
 });
 
 test('two proposals in flight before either executes both execute with their own correct values, never clobbered', async () => {
-  const client = new McpHttpClient(serverUrl);
+  const client = new McpHttpClient(serverUrl, { ownerKey: OWNER_KEY });
   const calls = spyOnCallTool(client);
 
   const approvals = {};
@@ -316,7 +317,7 @@ test('two proposals in flight before either executes both execute with their own
 });
 
 test('an execute attempt with no matching pending proposal is refused locally, never reaching execute_action', async () => {
-  const client = new McpHttpClient(serverUrl);
+  const client = new McpHttpClient(serverUrl, { ownerKey: OWNER_KEY });
   const calls = spyOnCallTool(client);
 
   const steps = [
@@ -341,7 +342,7 @@ test('an execute attempt with no matching pending proposal is refused locally, n
 });
 
 test('a replayed execute_action for an already-consumed proposal_id is refused the second time', async () => {
-  const client = new McpHttpClient(serverUrl);
+  const client = new McpHttpClient(serverUrl, { ownerKey: OWNER_KEY });
   const calls = spyOnCallTool(client);
 
   const steps = [
@@ -384,7 +385,7 @@ test('a replayed execute_action for an already-consumed proposal_id is refused t
 });
 
 test('a read-only tool call (list_devices) passes straight through to the real server', async () => {
-  const client = new McpHttpClient(serverUrl);
+  const client = new McpHttpClient(serverUrl, { ownerKey: OWNER_KEY });
 
   let sawDevices = false;
   const steps = [
@@ -427,7 +428,7 @@ function stubBedrockFetch(handler) {
 }
 
 test('with no bedrockClient override, the default path POSTs to /bedrock/converse and uses its JSON response', async () => {
-  const client = new McpHttpClient(serverUrl);
+  const client = new McpHttpClient(serverUrl, { ownerKey: OWNER_KEY });
   let capturedBody;
   const restore = stubBedrockFetch(async (init) => {
     capturedBody = JSON.parse(init.body);
@@ -449,7 +450,7 @@ test('with no bedrockClient override, the default path POSTs to /bedrock/convers
 });
 
 test('a non-ok /bedrock/converse response surfaces as a thrown Error carrying the proxy\'s message', async () => {
-  const client = new McpHttpClient(serverUrl);
+  const client = new McpHttpClient(serverUrl, { ownerKey: OWNER_KEY });
   const restore = stubBedrockFetch(async () => ({
     ok: false,
     status: 502,
@@ -468,7 +469,7 @@ test('a non-ok /bedrock/converse response surfaces as a thrown Error carrying th
 });
 
 test('exceeding maxIterations rejects with a clear error instead of hanging', async () => {
-  const client = new McpHttpClient(serverUrl);
+  const client = new McpHttpClient(serverUrl, { ownerKey: OWNER_KEY });
 
   const bedrockClient = {
     async send() {

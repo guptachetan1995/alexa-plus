@@ -15,7 +15,7 @@
 //
 // The script deliberately runs two propose/confirm cycles so the demo shows both
 // outcomes of the same gate: dimming the living room light is CONFIRMED and executed;
-// turning off the kitchen plug is DECLINED and left untouched.
+// unlocking the front door (seeded locked) is DECLINED, and the door stays locked.
 
 export const CONVERSATION_SCRIPT = [
   {
@@ -81,28 +81,28 @@ export const CONVERSATION_SCRIPT = [
   },
   {
     speaker: 'user',
-    text: 'Also turn off the kitchen coffee maker plug.',
+    text: 'Also unlock the front door.',
   },
   {
     speaker: 'agent',
-    text: 'Checking home automation policy allows turning off the kitchen plug.',
+    text: 'Checking home automation policy allows unlocking the front door.',
     tool: {
       name: 'check_automation_policy',
-      args: { action: { device_id: 'dev_kitchen_plug_1', action: 'turn_off', params: {} } },
+      args: { action: { device_id: 'dev_front_door_lock_1', action: 'unlock', params: {} } },
     },
   },
   {
     speaker: 'agent',
-    text: 'Proposing: turn off the Kitchen Coffee Maker Plug.',
+    text: 'Proposing: unlock the Front Door Lock.',
     tool: {
       name: 'propose_action',
-      args: { device_id: 'dev_kitchen_plug_1', action: 'turn_off', params: {} },
+      args: { device_id: 'dev_front_door_lock_1', action: 'unlock', params: {} },
     },
   },
   {
     speaker: 'system',
     kind: 'confirm',
-    contextKey: 'turnOffPlug',
+    contextKey: 'unlockFrontDoor',
   },
   {
     speaker: 'agent',
@@ -110,18 +110,18 @@ export const CONVERSATION_SCRIPT = [
     tool: {
       name: 'execute_action',
       args: (ctx) => ({
-        device_id: 'dev_kitchen_plug_1',
-        action: 'turn_off',
+        device_id: 'dev_front_door_lock_1',
+        action: 'unlock',
         params: {},
-        confirmation_id: ctx.turnOffPlug.token,
+        confirmation_id: ctx.unlockFrontDoor.token,
       }),
     },
-    runIf: (ctx) => ctx.turnOffPlug.decision === 'confirm',
+    runIf: (ctx) => ctx.unlockFrontDoor.decision === 'confirm',
   },
   {
     speaker: 'agent',
-    text: 'Understood — leaving the Kitchen Coffee Maker Plug on, nothing changed.',
-    runIf: (ctx) => ctx.turnOffPlug.decision === 'decline',
+    text: 'Understood — the Front Door Lock stays locked. Nothing changed.',
+    runIf: (ctx) => ctx.unlockFrontDoor.decision === 'decline',
   },
   {
     speaker: 'agent',

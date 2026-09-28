@@ -1,8 +1,7 @@
 'use strict';
 
 const { createApp } = require('../src/server.js');
-const { postRpc, initializeSession } = require('./helpers.js');
-const request = require('supertest');
+const { postRpc, initializeSession, decide, TEST_OWNER_KEY } = require('./helpers.js');
 
 async function callTool(app, sessionId, name, args, id = 10) {
   return postRpc(
@@ -14,7 +13,7 @@ async function callTool(app, sessionId, name, args, id = 10) {
 
 describe('propose -> approve -> execute (the happy path both refusal tests contrast against)', () => {
   test('propose_action -> approve (REST) -> execute_action mutates state and writes one audit entry', async () => {
-    const app = createApp();
+    const app = createApp({ ownerKey: TEST_OWNER_KEY });
     const { sessionId } = await initializeSession(app);
 
     const proposeRes = await callTool(app, sessionId, 'propose_action', {
@@ -27,7 +26,7 @@ describe('propose -> approve -> execute (the happy path both refusal tests contr
     expect(proposal.status).toBe('awaiting_approval');
     expect(proposal.policy_check.allowed).toBe(true);
 
-    const approveRes = await request(app).post(`/proposals/${proposal.proposal_id}/approve`).send();
+    const approveRes = await decide(app, proposal.proposal_id, 'approve');
     expect(approveRes.status).toBe(200);
     expect(approveRes.body.status).toBe('approved');
     const token = approveRes.body.confirmation_id;
@@ -54,7 +53,7 @@ describe('propose -> approve -> execute (the happy path both refusal tests contr
   });
 
   test('declining a proposal (REST reject) leaves it un-executable and leaves state unchanged', async () => {
-    const app = createApp();
+    const app = createApp({ ownerKey: TEST_OWNER_KEY });
     const { sessionId } = await initializeSession(app);
 
     const proposeRes = await callTool(app, sessionId, 'propose_action', {
@@ -64,7 +63,7 @@ describe('propose -> approve -> execute (the happy path both refusal tests contr
     });
     const proposal = proposeRes.body.result.structuredContent;
 
-    const rejectRes = await request(app).post(`/proposals/${proposal.proposal_id}/reject`).send();
+    const rejectRes = await decide(app, proposal.proposal_id, 'reject');
     expect(rejectRes.status).toBe(200);
     expect(rejectRes.body.status).toBe('rejected');
 
@@ -73,7 +72,7 @@ describe('propose -> approve -> execute (the happy path both refusal tests contr
   });
 
   test('compose_scene -> approve -> execute_scene applies every action and writes one audit entry per device', async () => {
-    const app = createApp();
+    const app = createApp({ ownerKey: TEST_OWNER_KEY });
     const { sessionId } = await initializeSession(app);
 
     const composeRes = await callTool(app, sessionId, 'compose_scene', {
@@ -87,7 +86,7 @@ describe('propose -> approve -> execute (the happy path both refusal tests contr
     const proposal = composeRes.body.result.structuredContent;
     expect(proposal.status).toBe('awaiting_approval');
 
-    const approveRes = await request(app).post(`/proposals/${proposal.proposal_id}/approve`).send();
+    const approveRes = await decide(app, proposal.proposal_id, 'approve');
     const token = approveRes.body.confirmation_id;
 
     const executeRes = await callTool(app, sessionId, 'execute_scene', {
@@ -110,7 +109,7 @@ describe('propose -> approve -> execute (the happy path both refusal tests contr
   });
 
   test('a scene with any action blocked by policy is blocked_by_policy end to end and cannot be approved', async () => {
-    const app = createApp();
+    const app = createApp({ ownerKey: TEST_OWNER_KEY });
     const { sessionId } = await initializeSession(app);
 
     const composeRes = await callTool(app, sessionId, 'compose_scene', {
@@ -120,7 +119,7 @@ describe('propose -> approve -> execute (the happy path both refusal tests contr
     const proposal = composeRes.body.result.structuredContent;
     expect(proposal.status).toBe('blocked_by_policy');
 
-    const approveRes = await request(app).post(`/proposals/${proposal.proposal_id}/approve`).send();
+    const approveRes = await decide(app, proposal.proposal_id, 'approve');
     expect(approveRes.status).toBe(409);
     expect(approveRes.body.error).toMatch(/not awaiting approval/);
   });

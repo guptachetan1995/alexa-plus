@@ -4,6 +4,16 @@ const request = require('supertest');
 
 const MCP_ACCEPT = 'application/json, text/event-stream';
 
+// The owner key every test app is built with, and the helper that plays the owner's
+// Confirm/Decline: a POST to the owner-only route carrying that key.
+const TEST_OWNER_KEY = 'test-owner-key';
+
+function decide(app, proposalId, decision, { key = TEST_OWNER_KEY } = {}) {
+  const req = request(app).post(`/proposals/${proposalId}/${decision}`);
+  if (key) req.set('Authorization', `Bearer ${key}`);
+  return req.send();
+}
+
 /** POSTs a JSON-RPC message with the headers every Streamable HTTP request needs. */
 function postRpc(app, body, { sessionId } = {}) {
   const req = request(app)
@@ -31,4 +41,4 @@ async function initializeSession(app, { clientName = 'conformance-test-client' }
   return { sessionId, initRes };
 }
 
-module.exports = { postRpc, initializeSession, MCP_ACCEPT };
+module.exports = { postRpc, initializeSession, decide, TEST_OWNER_KEY, MCP_ACCEPT };

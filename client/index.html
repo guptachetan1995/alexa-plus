@@ -207,6 +207,54 @@
         opacity: 0.5;
         cursor: default;
       }
+      .devices {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 0.5rem;
+        margin: 0 0 1rem;
+        padding: 0.6rem 0 0.75rem;
+        background: var(--bg);
+        /* Turns scroll under the sticky tiles; the rule and shadow mark that edge, so a
+           half-hidden line reads as scrolled away rather than cut off. */
+        border-bottom: 1px solid var(--border);
+        box-shadow: 0 8px 8px -8px rgba(26, 26, 46, 0.25);
+      }
+      .device-tile {
+        padding: 0.55rem 0.7rem;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--card);
+      }
+      .device-tile-changed {
+        border: 2px solid var(--real);
+      }
+      .device-name {
+        font-weight: 600;
+        font-size: 0.85rem;
+      }
+      .device-room {
+        font-size: 0.7rem;
+        color: #777;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+      }
+      .device-state {
+        margin-top: 0.25rem;
+        font-size: 1rem;
+      }
+      .result-summary {
+        margin: 0.3rem 0;
+        font-family: monospace;
+        font-size: 0.85rem;
+        color: #333;
+      }
+      .refusal-text {
+        margin: 0.3rem 0;
+        color: var(--error);
+      }
       pre {
         background: #1a1a2e;
         color: #e8e8f0;

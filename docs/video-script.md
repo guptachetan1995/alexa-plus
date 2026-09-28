@@ -1,193 +1,158 @@
 # alexa-plus Demo Video — Script & Shot List
 
-The production script for the demo video, published at
-https://www.youtube.com/watch?v=14YZX4JtDjY. It is everything needed to record the video
-without improvising: narration text, shot list, the exact seeded state to start from, and
+The production script for the re-cut of the demo video. The video published at
+https://www.youtube.com/watch?v=14YZX4JtDjY was rendered from the previous version of this
+script on 2026-09-10 and submitted on 2026-09-11; this version replaces it. Everything
+needed to render it without improvising is here: narration text, shot list, the exact
+seeded state to start from, the commands whose real output fills the terminal beats, and
 the timing budget. Paths and commands below are relative to the root of this repository.
+
+## What changed from the published video, and why
+
+- **The declined action is the front-door unlock, not the kitchen plug.** The plug is
+  seeded `off`, so the old script proposed turning off a plug that was already off and
+  then said it was "leaving it on". The lock is seeded `locked`; declining the unlock
+  leaves it locked, and the words and the data agree. It is also the example the whole
+  entry is about.
+- **The client subtitle no longer names a design document** that is not in this
+  repository; the old video showed the earlier wording.
+- **The ten-second bare `$` prompt is gone.** In its place, the MCP Inspector lists the
+  eight tools of the live server on AWS EC2 — the only beat that shows the deployed
+  endpoint.
+- **New beats for what was built since:** device tiles that visibly change on Confirm
+  and do not on Decline, the owner-key refusal on the approve route, and, only if a real
+  transcript exists, the Bedrock planner (beat 10).
+- **The narration names who it is for** and no longer speaks a test count; the terminal
+  beat shows whatever count `npm test` really prints at render time.
 
 ## Target runtime
 
-**Scripted length: ~2:25. Hard ceiling: 2:42** (Devpost asks for "approximately 3
-minutes"; the target was under 3:00 with 10% headroom, i.e. 2:42). Every tool
-call in this demo resolves against an in-memory registry on localhost — visibly instant
-on screen, no loading state to wait out — so there is no network- or provider-bound
-segment. On-screen pacing is entirely narration-paced and
-clicking-paced, not technical latency, so this script's timing is not a nominal
-estimate: it is exactly what a person clicking through it at a normal, unhurried pace
-will see.
+**2:08 without beat 10, 2:24 with it. Hard ceiling: 2:42** (the rules cap the video at
+"less than three (3) minutes"; 2:42 keeps 10% headroom). Every tool call resolves against
+an in-memory registry, so on-screen pacing is set by narration and clicks, not latency.
+Each beat is a still held for exactly its duration, so the render's length is the sum of
+the durations below.
 
 ## Recording setup — exact seeded state
 
-Two terminals plus a browser, all opened before recording starts:
+A fresh server and client on two ports nothing else is using, with a throwaway owner key
+and the client's origin allowed on the owner routes:
 
 ```bash
+export OWNER_KEY="$(node -e "console.log(require('node:crypto').randomBytes(24).toString('hex'))")"
 # Terminal 1 — server, from the repository root
 npm install
-npm start   # MCP server on http://127.0.0.1:3000/mcp
-```
-
-```bash
+PORT=<server-port> OWNER_ORIGINS=http://127.0.0.1:<client-port> npm start
 # Terminal 2 — client
-cd client
-npm install   # fetches only the optional Bedrock SDK; the scripted demo does not use it
-npm start     # simulated Alexa+ client on http://127.0.0.1:5173
+cd client && npm install && PORT=<client-port> npm start
 ```
 
-Check nothing else is already bound to 5173 before starting the client (a stray process
-from an earlier session will make `npm start` fail with `EADDRINUSE`); if so, run
-`PORT=<n> npm start` instead and open that port.
+Open `http://127.0.0.1:<client-port>/` and set the page's "MCP server URL" to
+`http://127.0.0.1:<server-port>/mcp`. The seeded state at 0:00 is the idle page: the
+title, the one-paragraph explainer, the server URL field and the "Start demo
+conversation" button, with no device tiles and no turns yet.
 
-Open a third terminal at the repository root, ready but not yet run — it is used only
-for Scene 7 (the server-refusal beat) and should stay hidden until then so it does not
-leak the outcome early. Pre-warm it once before recording:
-
-```bash
-npx -y @modelcontextprotocol/inspector --cli http://127.0.0.1:3000/mcp --method tools/list
-```
-
-(`npx -y` downloads/caches the Inspector package on first use — doing this once before
-recording means Scene 7's actual command runs instantly on camera instead of pausing on
-a package fetch.)
-
-Open `http://127.0.0.1:5173` in a browser window sized so the whole conversation column
-is visible without the page's own internal scrolling being distracting on camera. Do not
-click anything before recording starts. The seeded state that must be on screen at 0:00
-is the idle page:
-
-- Title "Alexa+ Smart Home — Simulated Client", the one-paragraph explainer, an "MCP
-  server URL" field pre-filled `http://127.0.0.1:3000/mcp`, and a single "Start demo
-  conversation" button. No conversation turns yet.
-
-The registry behind it (`server/data/devices.json`, read fresh by the server on start,
-never mutated by anything except a genuinely executed `execute_action`) is 5 devices in
-3 rooms:
+The registry behind it (`server/data/devices.json`, read fresh on start, changed only by
+a confirmed `execute_action`) is 5 devices in 3 rooms:
 
 | Device | Room | Seeded state |
 |---|---|---|
 | Living Room Overhead (light) | living room | power on, brightness 100, 4000K |
 | Bedroom Lamp (light) | bedroom | power off, brightness 0 |
 | Living Room Thermostat | living room | power on, heat, target 70°F, current 68°F |
-| Front Door Lock | living room | locked, battery 82% |
-| Kitchen Coffee Maker Plug | kitchen | **power off** |
+| Front Door Lock | living room | **locked**, battery 82% |
+| Kitchen Coffee Maker Plug | kitchen | power off |
 
-## Findings from the dry run that shaped this script
-
-Confirmed by actually starting both the server and the client fresh (`npm install` +
-`npm start` in each) and walking the full conversation in a real browser tab against the
-live server, then separately calling the server directly, before writing a line of
-narration:
-
-- **The Kitchen Coffee Maker Plug starts `off` in the seed data**, not `on`. The
-  in-app script's own agent line after the decline — "leaving the Kitchen Coffee Maker
-  Plug on, nothing changed" — and the user's line that prompts it — "Also turn off the
-  kitchen coffee maker plug" — both read as if the plug were currently powering the
-  machine. It is not; the device registry the demo reads from already has it off before
-  that turn ever runs, and the on-screen `list_devices` JSON from the very first turn
-  shows `"power": "off"` for it in plain sight. **The voiceover below narrates the
-  mechanic being demonstrated — a proposal being declined and never executed — and does
-  not claim the coffee maker is actively running.** Do not ad-lib a line like "so the
-  coffee keeps brewing"; nothing on screen supports it.
-- **The scripted conversation never makes the server refuse a call.** Its two
-  propose/confirm turns only ever call `execute_action` when the person clicks Confirm
-  (e.g. `runIf: (ctx) => ctx.dimLivingRoom.decision === 'confirm'`, in
-  `client/src/conversation-script.js`)
-  — a Decline just skips the call entirely, it does not attempt and get refused. The
-  app's `ToolPanel` component has full support for rendering a refusal (a red "REFUSED"
-  badge and the narrated reason text, styled distinctly from a successful "REAL — server
-  call" result) but nothing in the demo's own scripted path ever triggers it. **The
-  refusal beat the video needs has to be shown from outside the app**, against the
-  same running server, using the MCP Inspector CLI the README already documents for
-  exactly this kind of direct inspection (see Scene 7).
-- **Every tool call is genuinely real, not simulated** — `client/src/planner.js` routes
-  every turn through the one `McpHttpClient.callTool()`/`approveProposal()`/
-  `rejectProposal()` path, the same path a raw `tools/call` or the owner-only REST routes
-  use. There is nothing to caveat about a shot showing "REAL — server call": it is.
-- Exact text and values confirmed live against a freshly started server (2026-09-08):
-  - The propose→confirm→execute sequence for the light produces a `new_state` of
-    `{"power": "on", "brightness": 50, "color_temp_k": 4000}` and writes exactly one
-    audit entry (`actor: "user"`, `reason: "User approved via <proposal_id>"`).
-  - After the decline, `read_audit_log` returns **exactly one entry** — the light's —
-    proving the declined plug action produced zero side effects, not just that the UI
-    chose not to show one.
-  - Calling `execute_action` with no `confirmation_id` at all (device_id
-    `dev_kitchen_plug_1`, action `turn_off`) returns
-    `isError: true` with the text: *"execute_action requires a confirmation_id minted by
-    the person confirming a pending proposal in the client. Call propose_action first
-    and wait for their decision — this call was refused, nothing changed."* A follow-up
-    `get_device_state` on the same device afterward still reads `{"power": "off"}` with
-    the original, untouched `last_updated` timestamp — the refusal was a true no-op, not
-    a soft warning.
+Check the audit log is empty before the take and holds exactly one entry (the light)
+after it, directly against the server — not by eye on a frame.
 
 ## Shot list & narration
 
-| # | Time | Visual | Action | Narration (verbatim) |
-|---|------|--------|--------|------------------------|
-| 1 | 0:00–0:10 | Browser, idle seeded page | No action — hold, then click **Start demo conversation** | "This is an Alexa+ smart-home agent. It can see every device in the house — but it can't touch one without a person saying yes. Watch." |
-| 2 | 0:10–0:30 | Browser, turns arriving in sequence: `list_devices` → `get_device_state` → `check_automation_policy` → `propose_action`, ending on the **Confirmation needed** panel | Let each tool panel render for a beat, then hold on the confirm panel (do not click yet) | "The user asks to dim the living room light and check the thermostat. The agent looks up the device, checks it against home policy, and proposes the change — then stops. It hasn't touched the light yet." |
-| 3 | 0:30–0:50 | Browser, click **Confirm**; `execute_action` tool panel appears with the "REAL — server call" badge and `new_state` showing brightness 50 | Click Confirm | "One click mints a one-time confirmation token — only this button can mint it, never the agent. `execute_action` runs, and the light is genuinely at 50% now — the first and only moment its state actually changed." |
-| 4 | 0:50–1:05 | Browser, thermostat check, then the second **Confirmation needed** panel (Kitchen Coffee Maker Plug, turn_off) | Let the thermostat turn and the new proposal render | "It checks the thermostat, then the user asks it to also turn off the kitchen plug. Same gate, second time — propose, then wait." |
-| 5 | 1:05–1:25 | Browser, click **Decline**; scroll to the final `read_audit_log` tool panel | Click Decline | "This time, decline. The agent never calls `execute_action` for the plug — and the audit log at the end proves it: one entry, total. The light. Nothing else ever executed." |
-| 6 | 1:25–1:35 | Cut to the pre-opened third terminal, at the repository root | No action yet — just the prompt | "So confirming and declining both worked, inside the app. What stops the agent from just skipping the person entirely?" |
-| 7 | 1:35–2:00 | Terminal — run: `npx -y @modelcontextprotocol/inspector --cli http://127.0.0.1:3000/mcp --method tools/call --tool-name execute_action --tool-arg device_id=dev_kitchen_plug_1 --tool-arg action=turn_off` — zoom on the `isError` field and the message text | Run the command, pause on the output | "Calling `execute_action` on that plug directly — no confirmation id at all. `isError: true`. It needs a confirmation id minted by a person confirming a pending proposal, and this call didn't have one." |
-| 8 | 2:00–2:15 | Terminal — run `get_device_state` for the same device (same Inspector CLI pattern, `--tool-name get_device_state`) | Run the command | "Check the device afterward: still off, same timestamp as before. This isn't a warning beside a change that happened anyway. Nothing happened." |
-| 9 | 2:15–2:25 | Terminal — `npm test` from the repository root, scrolled to the summary line | Run the command, hold on the green summary | "Forty-one tests hold this gate from every angle. One button an agent can never press for itself: confirm." |
+Durations are exact (whole 40 ms frames). Narration is spoken as written — "Execute
+action" rather than `execute_action`, "Alexa Plus" rather than "Alexa+" — because it is
+read by a text-to-speech voice.
+
+| # | Time | Duration | Visual | Action | Narration (verbatim) |
+|---|---|---|---|---|---|
+| 1 | 0:00.0 | 13.0 s + 0.8 s | Browser, idle seeded page | Hold, then click **Start demo conversation** (the 0.8 s second still) | "A smart-home agent for Alexa Plus, for homes where more than one person has a say. It can see every device, but it can't change one until the owner says yes." |
+| 2 | 0:13.8 | 16.0 s | Browser: device tiles fill in; `list_devices` → `get_device_state` → `check_automation_policy` → `propose_action`, ending on **Confirmation needed** for `set_brightness` | Wait for the Confirm button, scroll to the bottom | "The user asks to dim the living room light. The agent reads the devices, checks home policy, and proposes the change, then stops. The tiles along the top haven't moved." |
+| 3 | 0:29.8 | 16.0 s | Browser: **Confirm** clicked; `execute_action` with the "REAL — server call" badge; the light's tile outlined, reading On · 50% | Click Confirm, wait for the outlined tile | "One click mints a one-time token, and only the owner's Confirm can mint it. Execute action runs, and the light's tile moves to fifty percent: the first moment anything changed." |
+| 4 | 0:45.8 | 11.0 s | Browser: thermostat read, "Also unlock the front door.", policy check, and the second **Confirmation needed** (`unlock on dev_front_door_lock_1`) | Scroll to the bottom | "It checks the thermostat. Then the user asks it to unlock the front door. Same gate: propose, then wait." |
+| 5 | 0:56.8 | 14.0 s | Browser: **Decline** clicked; "Understood — the Front Door Lock stays locked."; `read_audit_log` summary "1 entry: set_brightness on dev_living_room_light_1 by user"; the lock's tile still Locked | Click Decline, scroll to the bottom | "This time, decline. The agent never executes it, the door's tile still says Locked, and the audit log at the end holds one entry: the light." |
+| 6 | 1:10.8 | 11.0 s | Terminal: `npx -y @modelcontextprotocol/inspector --cli http://16.176.3.215:3000/mcp --method tools/list \| jq -r '.tools[].name'` and the eight names | — | "The same server runs on AWS EC2 in Sydney. Any MCP client can list its eight tools; this is the MCP Inspector." |
+| 7 | 1:21.8 | 13.0 s | Terminal: the Inspector calling `execute_action` with `device_id=dev_front_door_lock_1`, `action=unlock` and no `confirmation_id` against the local server; `"isError": true` and the reason | — | "Now skip the person. Call execute action to unlock the door with no confirmation id. Refused, with the reason, and nothing changed." |
+| 8 | 1:34.8 | 10.0 s | Terminal: `curl -s -w '\nHTTP %{http_code}\n' -X POST http://127.0.0.1:<server-port>/proposals/<a pending proposal_id>/approve` with no key; the `Only the home owner…` error and `HTTP 401` | — | "And the approve route itself turns away anyone without the owner's key: four oh one, nothing minted." |
+| 9 | 1:44.8 | 8.0 s | Terminal: the Inspector calling `get_device_state` for the lock: `"locked": true`, `"last_updated": "2026-09-08T08:00:00Z"` | — | "The door is still locked, with the same timestamp as before." |
+| 10 | 1:52.8 | 16.0 s | *Only with a real transcript.* Terminal: the output of `node bedrock-cli.js` — `[tool]` lines for the calls Amazon Nova Micro chose, `[gate]` lines for each Confirm/Decline typed by the person | — | "With the Bedrock planner, Amazon Nova Micro picks the tools through the Converse API, and every change it proposes still waits for the person at the same gate." |
+| 11 | 1:52.8 (2:08.8 with 10) | 9.0 s | Terminal: `npm test` from the repository root, ending on the Jest summary | — | "The server's test suite covers every one of these refusals. One button the agent can never press for itself: Confirm." |
+| 12 | 2:01.8 (2:17.8 with 10) | 6.0 s | Terminal-style card: "Smart Home Agent", the repository, the live MCP URL, the Devpost page | — | "Links are in the description." |
+
+## Where each terminal beat's text comes from
+
+Every terminal beat shows the real output of the command it shows, captured at render
+time, never typed by hand; the render stops if the output does not say what the
+narration says (eight tool names; `isError` with the confirmation reason; `HTTP 401`; the
+lock still `locked` with the seed timestamp; a passing Jest summary).
+
+- Beat 6 runs against the live EC2 server, read-only.
+- Beat 8 needs a pending proposal id; one is created on the local server with
+  `propose_action` before the take (proposing changes no device), and is never approved.
+- Beat 10 is the one beat that cannot be produced here. It needs a real run of
+  `client/bedrock-cli.js` with AWS credentials, which costs a few metered Converse calls,
+  so it is the owner's to record (for example in AWS CloudShell, where the credentials
+  already are), saving the terminal output to a file:
+
+  ```bash
+  OWNER_KEY="$OWNER_KEY" AWS_REGION=ap-southeast-2 node bedrock-cli.js http://127.0.0.1:3000/mcp \
+    "Dim the living room light to 50%, then unlock the front door, then show me the audit log." \
+    | tee bedrock-transcript.txt
+  ```
+
+  `bedrock-cli.js` writes the transcript to stdout and its Confirm/Decline prompts to
+  stderr, so the prompts show in the terminal and the file holds only the transcript,
+  with every `[gate]` line starting its own line.
+
+  Without that file the beat is left out and the video runs 2:08; it is never stood in
+  for. If the model's run does not propose anything (no `[gate]` line), the beat is left
+  out too, because its narration would not be true.
+
+## Render order
+
+1. The EC2 server is redeployed with the owner key first. Beat 6 says the server on EC2
+   is this same server, so the renderer (the video tooling is kept outside this
+   repository) refuses a real render while the live host's key-less approve answers
+   anything but `401`.
+2. Then one render, with the beat 10 transcript passed in if the owner recorded one.
 
 ## Timing contingency
 
-Every segment above is either a fixed narration read or a near-instant tool call — there
-is no variable-duration real-world step. If a take runs long,
-trim in this order without dropping any of the four required beats (the conversation,
-an inline tool call, a confirmed action, and a refused one): shorten Scene 9's line to
-its first sentence ("Forty-one tests hold this gate from every angle."); then shorten
-Scene 2's narration by cutting the "checks it against home policy" clause, since the
-policy-check panel is still visible on screen without being narrated line-by-line.
+Every beat is a held still, so a take cannot run long. If a narration line is trimmed
+at its beat's end (the renderer warns), shorten the line rather than the beat: beat 1's
+second sentence can lose "but it can't change one" → "and changes nothing until the owner
+says yes", and beat 3 can drop ": the first moment anything changed".
 
 ## What this script does not show
 
-- `compose_scene`/`execute_scene` — real, tested (`server/test/proposal-lifecycle.test.js`,
-  `policy.test.js`), but the demo conversation only exercises single-device
-  `propose_action`/`execute_action`, and adding a scene here would push well past the
-  strongest-30-seconds framing for no new required beat.
-- Owner-only CLI verbs (`approve`, `reject`, `list-proposals`, `audit`) from the original
-  design — this entry has no CLI; `approve` and `reject` became two REST routes instead
-  (`POST /proposals/:id/approve` and `/reject`), which is what the Confirm/Decline buttons
-  call. Nothing to film separately.
-- OAuth 2.1 with PKCE — not implemented; the demo runs against the unauthenticated local
-  server, matching what actually exists.
-- A `blocked_by_policy` proposal (the `ConfirmPanel`'s grayed-out "Blocked by automation
-  policy" state, `disabled` Confirm button) — real in the code (`app.js`'s `ConfirmPanel`
-  checks `proposal.status === 'blocked_by_policy'`), but neither of the demo's
-  two scripted actions trips a policy rule (both come back `allowed: true`), so it never
-  renders during this script and is out of scope for the four required beats.
+- `compose_scene`/`execute_scene` — real and tested (`server/test/proposal-lifecycle.test.js`,
+  `execute-refusals.test.js`), but the demo conversation only runs single-device
+  proposals, and a scene adds no new required beat.
+- A `blocked_by_policy` proposal (the Confirm button disabled) — real in `app.js`, but
+  both demo actions are allowed by the policy.
+- The execute-time policy re-check firing — it is tested by switching the policy between
+  approval and execution, which the demo conversation has no reason to do.
+- OAuth 2.1 with PKCE — not implemented; the owner key is a single shared secret, and the
+  video does not suggest otherwise.
+- A real Alexa device. The client is a simulated Alexa+ surface, and beat 1 says "for
+  Alexa Plus", not "on".
 
-## Dry-run verification (when this script was written)
+## Dry-run verification (2026-09-28)
 
-Walked the full path above against a freshly started server and client (`npm install &&
-npm start` at the repository root, then the same in `client/`, a
-real browser tab pointed at `http://127.0.0.1:5199` — a non-default port, only because
-another concurrent session on this machine already held 5173 during this run) end to
-end: idle page → `list_devices` → `get_device_state` → `check_automation_policy` →
-`propose_action` → **Confirm** clicked → `execute_action` succeeded (`new_state`
-brightness 50) → thermostat `get_device_state` → second `propose_action` → **Decline**
-clicked → `read_audit_log` returned exactly one entry. Every tool panel, badge, and JSON
-body quoted above is copied verbatim from that live run's rendered page text, not
-invented. Separately, against the same running server, `execute_action` called with no
-`confirmation_id` via the MCP Inspector CLI returned the exact refusal text quoted above,
-and a follow-up `get_device_state` on the same device confirmed its state and
-`last_updated` were unchanged.
-
-The automated browser used for this dry run runs headless/background for this
-particular session (a shared pane across several concurrent agent sessions on this
-machine), so most of the run was captured as rendered page text/accessibility-tree
-content rather than pixel screenshots — two pixel screenshots were captured successfully
-before the pane went out of view (the idle seeded page at 0:00, and the mid-conversation
-page with the `list_devices` result panel open), matching the sequence described above
-exactly.
-The full text transcript (every tool call and result, in order) was kept with the
-change that added this script and is not part of this repository; the README's "Demo
-walkthrough" has a transcript of the same run shape. A real screen recording on the
-owner's own machine does not have this constraint — the browser is simply visible the
-whole time.
-
-`npm test` (41 tests, 7 suites) and `bash verify.sh` both passed against the same
-checkout.
+The terminal beats were captured once against a freshly started server on two unused
+ports and against the live EC2 server: the Inspector listed all eight tools from
+`http://16.176.3.215:3000/mcp`; the token-less `execute_action` returned `"isError": true`
+with the reason quoted in the README; the key-less approve returned `HTTP 401` with the
+`Only the home owner…` error; `get_device_state` showed the lock `locked` with
+`last_updated` `2026-09-08T08:00:00Z`; and `npm test` printed 47 passing tests in 7
+suites. The browser states of beats 2–5 were reached in headless Chromium against the
+same kind of fresh pair (the README's screenshot is the beat 4 state). The video itself
+has not been rendered from this version yet.

@@ -1,6 +1,6 @@
 'use strict';
 
-const { randomUUID } = require('node:crypto');
+const { randomUUID, createHash, timingSafeEqual } = require('node:crypto');
 const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js');
 const {
   StreamableHTTPServerTransport,
@@ -11,11 +11,16 @@ const { isInitializeRequest } = require('@modelcontextprotocol/sdk/types.js');
 const { DeviceRegistry } = require('./device-registry.js');
 const { AuditLog } = require('./audit.js');
 const { ProposalStore } = require('./proposals.js');
+const { checkAutomationPolicy } = require('./policy.js');
 const { registerReadOnlyTools, registerMutatingTools } = require('./tools.js');
 
 const PROTOCOL_VERSION = '2025-11-25';
 const SERVER_NAME = 'alexa-plus-smart-home-agent';
 const SERVER_VERSION = '0.1.0';
+
+// The simulated client's default origins. Only these may call /proposals/* from a
+// browser unless OWNER_ORIGINS says otherwise.
+const DEFAULT_OWNER_ORIGINS = ['http://127.0.0.1:5173', 'http://localhost:5173'];
 
 /**
  * One McpServer per HTTP session, each wired to the same shared registry/audit/
@@ -23,42 +28,92 @@ const SERVER_VERSION = '0.1.0';
  * at the app level, not the session level, since a proposal made in one session must
  * still be approvable/executable if the client reconnects with a new session id.
  */
-function buildMcpServer({ registry, audit, proposals }) {
+function buildMcpServer({ registry, audit, proposals, policy }) {
   const server = new McpServer(
     { name: SERVER_NAME, version: SERVER_VERSION },
     { capabilities: { tools: { listChanged: false } } }
   );
-  registerReadOnlyTools(server, { registry, audit });
-  registerMutatingTools(server, { registry, proposals, audit });
+  registerReadOnlyTools(server, { registry, audit, policy });
+  registerMutatingTools(server, { registry, proposals, audit, policy });
   return server;
+}
+
+function sha256(value) {
+  return createHash('sha256').update(String(value)).digest();
+}
+
+/**
+ * Guards the owner-only decision routes. The key is compared as fixed-length digests
+ * with timingSafeEqual, so response timing says nothing about how much of a guess was
+ * right. With no ownerKey configured the routes fail closed: nothing can be approved.
+ */
+function requireOwnerKey(ownerKey) {
+  const expected = ownerKey ? sha256(ownerKey) : null;
+  return (req, res, next) => {
+    if (!expected) {
+      res.status(503).json({
+        error: 'Owner approval is disabled: this server was started without OWNER_KEY, so no proposal can be approved or declined.',
+      });
+      return;
+    }
+    const match = /^Bearer (.+)$/.exec(req.headers.authorization || '');
+    if (!match || !timingSafeEqual(sha256(match[1]), expected)) {
+      res.set('WWW-Authenticate', 'Bearer');
+      res.status(401).json({
+        error: 'Only the home owner can approve or decline a proposal: send the owner key as "Authorization: Bearer <key>". Nothing was minted or changed.',
+      });
+      return;
+    }
+    next();
+  };
 }
 
 /**
  * Builds the Express app for the MCP endpoint. Exported (not auto-listening) so tests
- * can drive it in-process with supertest without binding a real port.
+ * can drive it in-process with supertest without binding a real port. `ownerKey` is the
+ * secret the owner-only /proposals routes require; `policy` is the automation policy
+ * every tool checks (injectable so a test can change it between approval and execution).
  */
 function createApp({
   registry = new DeviceRegistry(),
   audit = new AuditLog(),
   proposals = new ProposalStore(),
+  policy = checkAutomationPolicy,
+  ownerKey,
+  ownerOrigins = DEFAULT_OWNER_ORIGINS,
 } = {}) {
   // createMcpExpressApp()'s own DNS-rebinding Host check — not the
   // StreamableHTTPServerTransport below — is what enforces localhost-only by
   // default (via its `host` option, independent of what this process actually
   // binds to). `host: '0.0.0.0'` opts out of that automatic allowlist, the same
-  // tradeoff already made for CORS: no auth, no origin allowlist, so this one
-  // check wasn't real protection — just this SDK helper's localhost default.
+  // tradeoff already made for /mcp's CORS: the agent surface has no auth and no
+  // origin allowlist, so this one check wasn't real protection — just this SDK
+  // helper's localhost default. The owner routes are protected by the owner key.
   const app = createMcpExpressApp({ host: '0.0.0.0' });
 
   // The simulated Alexa+ client runs on its own origin/port and talks to
   // this server only over HTTP, so cross-origin fetches need explicit CORS — including
   // exposing Mcp-Session-Id, which a browser's fetch() otherwise hides on cross-origin
   // responses even though the header is present on the wire.
+  //
+  // Two policies. /mcp is the agent's surface and stays open to any origin (any MCP
+  // client may connect). /proposals/* is the owner's surface: a browser may call it only
+  // from an allowlisted origin, on top of the owner key the decision routes require.
+  const allowedOwnerOrigins = new Set(ownerOrigins);
   app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Accept, Mcp-Session-Id');
-    res.header('Access-Control-Expose-Headers', 'Mcp-Session-Id');
+    if (req.path.startsWith('/proposals')) {
+      res.header('Vary', 'Origin');
+      if (allowedOwnerOrigins.has(req.headers.origin)) {
+        res.header('Access-Control-Allow-Origin', req.headers.origin);
+        res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      }
+    } else {
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Accept, Mcp-Session-Id');
+      res.header('Access-Control-Expose-Headers', 'Mcp-Session-Id');
+    }
     if (req.method === 'OPTIONS') {
       res.sendStatus(204);
       return;
@@ -92,7 +147,7 @@ function createApp({
             delete transports[sid];
           }
         };
-        const server = buildMcpServer({ registry, audit, proposals });
+        const server = buildMcpServer({ registry, audit, proposals, policy });
         await server.connect(transport);
         await transport.handleRequest(req, res, req.body);
         return;
@@ -157,9 +212,12 @@ function createApp({
 
   // Owner-only proposal decisions — the `approve`/`reject` verbs, as REST routes because
   // this entry's client is a web page, not a CLI. These are plain REST routes, NOT
-  // MCP tools: no agent tool call can reach them, which is what makes the confirmation
-  // token "minted only by the client's Confirm control" true rather than aspirational.
-  app.post('/proposals/:proposalId/approve', (req, res) => {
+  // MCP tools: no agent tool call can reach them. And they require the owner key, so an
+  // HTTP caller who is not the owner cannot reach them either — together that is what
+  // makes the confirmation token "minted only by the owner's Confirm" true.
+  const ownerOnly = requireOwnerKey(ownerKey);
+
+  app.post('/proposals/:proposalId/approve', ownerOnly, (req, res) => {
     const outcome = proposals.approve(req.params.proposalId);
     if (!outcome.ok) {
       res.status(409).json({ error: outcome.reason });
@@ -172,7 +230,7 @@ function createApp({
     });
   });
 
-  app.post('/proposals/:proposalId/reject', (req, res) => {
+  app.post('/proposals/:proposalId/reject', ownerOnly, (req, res) => {
     const outcome = proposals.reject(req.params.proposalId);
     if (!outcome.ok) {
       res.status(409).json({ error: outcome.reason });
@@ -199,9 +257,15 @@ function createApp({
 
 function main() {
   const port = process.env.PORT ? Number(process.env.PORT) : 3000;
-  const app = createApp();
+  const ownerOrigins = process.env.OWNER_ORIGINS
+    ? process.env.OWNER_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+    : DEFAULT_OWNER_ORIGINS;
+  const app = createApp({ ownerKey: process.env.OWNER_KEY, ownerOrigins });
   app.listen(port, () => {
     console.log(`alexa-plus MCP server (Streamable HTTP, ${PROTOCOL_VERSION}) listening on http://127.0.0.1:${port}/mcp`);
+    if (!process.env.OWNER_KEY) {
+      console.log('OWNER_KEY is not set: every approve/reject is refused until the server is restarted with one.');
+    }
   });
 }
 

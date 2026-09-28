@@ -138,9 +138,18 @@ function toolResultJson(result) {
  * threaded through explicitly (never closed over a module-level variable) so it can
  * never leak between concurrent conversations.
  */
-async function handleToolUse({ mcpClient, name, input, onConfirmRequest, onTurn, confirmedProposals }) {
+async function handleToolUse({ mcpClient, name, input, onConfirmRequest, emit, confirmedProposals }) {
+  // Every real server call is reported as a tool turn, the same shape planner.js
+  // produces, so the page's tool panels and device panel (and bedrock-cli.js's
+  // transcript) show what the model actually did.
+  const callTool = async (toolName, args) => {
+    const result = await mcpClient.callTool(toolName, args);
+    emit({ speaker: 'agent', text: '', tool: { name: toolName, args, result, real: true } });
+    return result;
+  };
+
   if (PROPOSE_TOOLS.has(name)) {
-    const result = await mcpClient.callTool(name, input ?? {});
+    const result = await callTool(name, input ?? {});
     if (result.isError) {
       return toolResultJson(result);
     }
@@ -149,8 +158,7 @@ async function handleToolUse({ mcpClient, name, input, onConfirmRequest, onTurn,
     // planner.js's confirm turn (the client-side Confirm button is already disabled for
     // a blocked proposal; approveProposal() below refuses it server-side regardless).
     const decision = await onConfirmRequest(proposal);
-    const confirmTurn = { speaker: 'system', kind: 'confirm', proposal, decision };
-    if (onTurn) onTurn(confirmTurn);
+    emit({ speaker: 'system', kind: 'confirm', proposal, decision });
 
     if (decision === 'confirm') {
       const approval = await mcpClient.approveProposal(proposal.proposal_id);
@@ -185,13 +193,13 @@ async function handleToolUse({ mcpClient, name, input, onConfirmRequest, onTurn,
     }
     const result =
       name === 'execute_action'
-        ? await mcpClient.callTool('execute_action', {
+        ? await callTool('execute_action', {
             device_id: held.device_id,
             action: held.action,
             params: held.params,
             confirmation_id: held.confirmation_id,
           })
-        : await mcpClient.callTool('execute_scene', {
+        : await callTool('execute_scene', {
             scene_name: held.scene_name,
             confirmation_id: held.confirmation_id,
           });
@@ -204,7 +212,7 @@ async function handleToolUse({ mcpClient, name, input, onConfirmRequest, onTurn,
 
   // Read-only tools (list_devices, get_device_state, check_automation_policy,
   // read_audit_log): the model's args are passed straight through, no gate.
-  const result = await mcpClient.callTool(name, input ?? {});
+  const result = await callTool(name, input ?? {});
   return toolResultJson(result);
 }
 
@@ -242,8 +250,12 @@ export async function runBedrockConversation(mcpClient, opts = {}) {
   };
 
   const messages = [{ role: 'user', content: [{ text: userRequest }] }];
-  const completed = [{ speaker: 'user', text: userRequest }];
-  if (onTurn) onTurn(completed[0]);
+  const completed = [];
+  const emit = (turn) => {
+    completed.push(turn);
+    if (onTurn) onTurn(turn);
+  };
+  emit({ speaker: 'user', text: userRequest });
 
   // Local to this call only — see the file header for why this must never be shared
   // across concurrent conversations.
@@ -264,11 +276,7 @@ export async function runBedrockConversation(mcpClient, opts = {}) {
       .filter((block) => typeof block.text === 'string')
       .map((block) => block.text)
       .join('\n');
-    if (text) {
-      const turn = { speaker: 'agent', text };
-      completed.push(turn);
-      if (onTurn) onTurn(turn);
-    }
+    if (text) emit({ speaker: 'agent', text });
 
     if (stopReason !== 'tool_use') {
       return completed;
@@ -283,7 +291,7 @@ export async function runBedrockConversation(mcpClient, opts = {}) {
         name,
         input,
         onConfirmRequest,
-        onTurn,
+        emit,
         confirmedProposals,
       });
       toolResultContent.push({ toolResult: { toolUseId, content: [{ json }] } });

@@ -10,10 +10,15 @@ const PROTOCOL_VERSION = '2025-11-25';
 const MCP_ACCEPT = 'application/json, text/event-stream';
 
 export class McpHttpClient {
-  constructor(url) {
+  // The owner key is held privately and sent only on the approve/reject routes below,
+  // never on a tools/call, so nothing on the agent's side of the wire ever carries it.
+  #ownerKey;
+
+  constructor(url, { ownerKey = null } = {}) {
     this.url = url;
     this.sessionId = null;
     this._nextId = 1;
+    this.#ownerKey = ownerKey;
   }
 
   /** Runs the initialize handshake + initialized notification; returns serverInfo. */
@@ -49,7 +54,7 @@ export class McpHttpClient {
    * through callTool() on purpose (this is the one place the shared-surface guarantee
    * does NOT apply, because minting a confirmation token is the person's decision,
    * never the agent's). Only ever called from the UI's Confirm/Decline button handlers
-   * in app.js.
+   * in app.js. Each carries the owner key; without it the server refuses the decision.
    */
   async approveProposal(proposalId) {
     return this._proposalDecision(proposalId, 'approve');
@@ -61,7 +66,9 @@ export class McpHttpClient {
 
   async _proposalDecision(proposalId, decision) {
     const proposalsUrl = new URL('/proposals/' + encodeURIComponent(proposalId) + '/' + decision, this.url);
-    const res = await fetch(proposalsUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+    const headers = { 'Content-Type': 'application/json' };
+    if (this.#ownerKey) headers.Authorization = `Bearer ${this.#ownerKey}`;
+    const res = await fetch(proposalsUrl, { method: 'POST', headers });
     const body = await res.json();
     if (!res.ok) {
       throw new Error(body.error || `Server refused to ${decision} proposal "${proposalId}".`);

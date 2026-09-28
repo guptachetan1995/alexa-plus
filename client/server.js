@@ -30,6 +30,7 @@ import { DEFAULT_MODEL_ID } from './src/bedrock-planner.js';
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const THIS_FILE = fileURLToPath(import.meta.url);
 const PORT = process.env.PORT ? Number(process.env.PORT) : 5173;
+const HOST = process.env.HOST || '127.0.0.1';
 // Server-side only — the browser no longer needs to know which AWS region is in play,
 // since it never constructs an AWS client itself any more.
 const REGION = process.env.AWS_REGION || 'ap-southeast-2';
@@ -38,11 +39,19 @@ const REGION = process.env.AWS_REGION || 'ap-southeast-2';
 // request handler, and never by app.js reaching for process.env, which does not exist
 // in a browser. No AWS credentials are read or embedded here or anywhere in this
 // template — `modelId` just tells the browser which model name to display/request.
+//
+// OWNER_KEY is the one secret that does go into the page: it is what the page's own
+// Confirm/Decline buttons send to the MCP server's owner-only routes. That is why this
+// server listens on 127.0.0.1 only (HOST, above) and checks the Host header (below) — the
+// page, and the key in it, are for the person at this machine. The planners never read it
+// (see mcp-client.js).
 const CLIENT_CONFIG = {
   planner: process.env.PLANNER || 'scripted',
   modelId: process.env.BEDROCK_MODEL_ID || DEFAULT_MODEL_ID,
+  ownerKey: process.env.OWNER_KEY || null,
 };
-const CONFIG_SCRIPT = `<script>window.__ALEXA_PLUS_CONFIG__ = ${JSON.stringify(CLIENT_CONFIG)};</script>\n  `;
+// `<` is escaped so no configured value can close the script element early.
+const CONFIG_SCRIPT = `<script>window.__ALEXA_PLUS_CONFIG__ = ${JSON.stringify(CLIENT_CONFIG).replace(/</g, '\\u003c')};</script>\n  `;
 
 const CONTENT_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -94,6 +103,22 @@ async function handleBedrockConverse(req, res, bedrockClient) {
   }
 }
 
+// Listening on 127.0.0.1 does not stop DNS rebinding: a page on an attacker's domain that
+// re-resolves to 127.0.0.1 would load this page as its own origin and read OWNER_KEY out
+// of it (or spend Bedrock calls through /bedrock/converse). The Host header still names
+// the attacker's domain, so every route answers only a Host that names this machine.
+const ALLOWED_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '[::1]', HOST]);
+
+function hostAllowed(req) {
+  let url;
+  try {
+    url = new URL(`http://${req.headers.host}`);
+  } catch {
+    return false;
+  }
+  return ALLOWED_HOSTNAMES.has(url.hostname) && Number(url.port || 80) === req.socket.localPort;
+}
+
 /**
  * Builds the server. Exported (not auto-listening) so tests can inject a fake
  * `bedrockClient` and drive `/bedrock/converse` without a real AWS credential or
@@ -101,6 +126,10 @@ async function handleBedrockConverse(req, res, bedrockClient) {
  */
 export function createServer({ bedrockClient = new BedrockRuntimeClient({ region: REGION }) } = {}) {
   return createHttpServer(async (req, res) => {
+    if (!hostAllowed(req)) {
+      res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Forbidden: unexpected Host header');
+      return;
+    }
     const { pathname } = new URL(req.url, 'http://localhost');
 
     if (req.method === 'POST' && pathname === '/bedrock/converse') {
@@ -132,12 +161,15 @@ export function createServer({ bedrockClient = new BedrockRuntimeClient({ region
 
 function main() {
   const server = createServer();
-  server.listen(PORT, () => {
-    console.log(`alexa-plus simulated client listening on http://127.0.0.1:${PORT}`);
+  server.listen(PORT, HOST, () => {
+    console.log(`alexa-plus simulated client listening on http://${HOST}:${PORT}`);
     console.log(
       'Open that URL in a browser. It talks to the MCP server URL entered in the page ' +
         '(default http://127.0.0.1:3000/mcp — start the server with npm start in ../).'
     );
+    if (!CLIENT_CONFIG.ownerKey) {
+      console.log('OWNER_KEY is not set: the server will refuse this page\'s Confirm and Decline.');
+    }
   });
 }
 

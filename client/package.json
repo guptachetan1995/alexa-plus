@@ -6,11 +6,11 @@
   "description": "Simulated Alexa+ web client for the alexa-plus MCP server — no build step, talks to the server only over Streamable HTTP.",
   "license": "MIT",
   "engines": {
-    "node": ">=20"
+    "node": ">=20.10"
   },
   "scripts": {
     "start": "node server.js",
-    "test": "node --test"
+    "test": "node --test --test-concurrency=1"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.600.0"

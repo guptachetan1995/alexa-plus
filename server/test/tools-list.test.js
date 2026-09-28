@@ -40,6 +40,19 @@ describe('tools/list', () => {
 
     const getDeviceState = tools.find((t) => t.name === 'get_device_state');
     expect(getDeviceState.inputSchema.required).toContain('device_id');
+
+    // Annotations are hints for a host; the gate never depends on them, but they must
+    // not contradict what each tool does.
+    const hints = Object.fromEntries(tools.map((t) => [t.name, t.annotations]));
+    for (const name of ['list_devices', 'get_device_state', 'check_automation_policy', 'read_audit_log']) {
+      expect(hints[name]).toEqual({ readOnlyHint: true, idempotentHint: true, openWorldHint: false });
+    }
+    for (const name of ['propose_action', 'compose_scene']) {
+      expect(hints[name]).toMatchObject({ readOnlyHint: false, destructiveHint: false });
+    }
+    for (const name of ['execute_action', 'execute_scene']) {
+      expect(hints[name]).toMatchObject({ readOnlyHint: false, destructiveHint: true });
+    }
   });
 
   test('tools/list requires a live session (no session id -> 400)', async () => {

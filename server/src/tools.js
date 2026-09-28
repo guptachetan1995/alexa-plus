@@ -18,6 +18,13 @@ function errorResult(text) {
   return { isError: true, content: [{ type: 'text', text }] };
 }
 
+// MCP tool annotations. They are hints a host may use to decide when to prompt — this
+// server never relies on them: execute_action/execute_scene refuse without a
+// confirmation_id only the owner can mint, whatever a host does with these.
+const READ_ONLY = { readOnlyHint: true, idempotentHint: true, openWorldHint: false };
+const PROPOSES = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false };
+const EXECUTES = { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false };
+
 function okResult(structuredContent) {
   return {
     content: [{ type: 'text', text: JSON.stringify(structuredContent, null, 2) }],
@@ -31,11 +38,12 @@ function okResult(structuredContent) {
  * returns AND what it explicitly will not do, so a planner does not assume side effects
  * (or freshness guarantees) that do not exist.
  */
-function registerReadOnlyTools(server, { registry, audit }) {
+function registerReadOnlyTools(server, { registry, audit, policy = checkAutomationPolicy }) {
   server.registerTool(
     'list_devices',
     {
       title: 'List smart home devices',
+      annotations: READ_ONLY,
       description:
         'Return every connected smart home device, or only the devices in one room ' +
         'when a room name is given. Each device in the result includes its device_id, ' +
@@ -66,6 +74,7 @@ function registerReadOnlyTools(server, { registry, audit }) {
     'get_device_state',
     {
       title: 'Get one device’s current state',
+      annotations: READ_ONLY,
       description:
         'Return the current state (e.g. power, brightness, temperature, lock status) ' +
         'and the last_updated timestamp for exactly one device, looked up by its ' +
@@ -100,6 +109,7 @@ function registerReadOnlyTools(server, { registry, audit }) {
     'check_automation_policy',
     {
       title: 'Check whether the home’s automation policy allows a proposed action',
+      annotations: READ_ONLY,
       description:
         'Verify a proposed device action against the home’s automation policy (energy ' +
         'limits, unsupported actions, unknown devices) BEFORE proposing it. Returns ' +
@@ -115,13 +125,14 @@ function registerReadOnlyTools(server, { registry, audit }) {
         ),
       },
     },
-    async ({ action }) => okResult(checkAutomationPolicy(action, registry))
+    async ({ action }) => okResult(policy(action, registry))
   );
 
   server.registerTool(
     'read_audit_log',
     {
       title: 'Read the home automation audit log',
+      annotations: READ_ONLY,
       description:
         'Return audit entries — one per executed device action — newest first, ' +
         'optionally filtered to a single device_id and capped at `limit` (default 50). ' +
@@ -156,11 +167,12 @@ function registerReadOnlyTools(server, { registry, audit }) {
  * REST routes in server.js already approved. Nothing in this file ever mints a
  * confirmation token; see proposals.js for why that guarantee holds.
  */
-function registerMutatingTools(server, { registry, proposals, audit }) {
+function registerMutatingTools(server, { registry, proposals, audit, policy = checkAutomationPolicy }) {
   server.registerTool(
     'propose_action',
     {
       title: 'Propose a single-device action for the person to review',
+      annotations: PROPOSES,
       description:
         'Describe a proposed action on one device in a structured proposal (expected ' +
         'outcome, rationale, and the automation-policy check) for a person to review ' +
@@ -189,13 +201,15 @@ function registerMutatingTools(server, { registry, proposals, audit }) {
           `No device with device_id "${deviceId}" exists in the registry. Call list_devices to see valid ids.`
         );
       }
-      const policyCheck = checkAutomationPolicy({ device_id: deviceId, action, params }, registry);
+      const policyCheck = policy({ device_id: deviceId, action, params }, registry);
       const proposal = proposals.createAction({
         device_id: deviceId,
         action,
         params,
         expectedOutcome: policyCheck.allowed
-          ? `${device.name} will have ${action} applied with ${JSON.stringify(params)}.`
+          ? `${device.name} will have ${action} applied${
+              Object.keys(params).length ? ` with ${JSON.stringify(params)}` : ''
+            }.`
           : 'No change — this action is blocked by automation policy.',
         rationale: `Requested ${action} on ${device.name} (${device.room}).`,
         policyCheck,
@@ -208,6 +222,7 @@ function registerMutatingTools(server, { registry, proposals, audit }) {
     'execute_action',
     {
       title: 'Execute a previously proposed action, if the person confirmed it',
+      annotations: EXECUTES,
       description:
         'Execute a device action, but ONLY when `confirmation_id` is a one-time token ' +
         'that the person’s Confirm control in the client already minted for this exact ' +
@@ -264,7 +279,7 @@ function registerMutatingTools(server, { registry, proposals, audit }) {
             `device_id "${deviceId}", action "${action}". Nothing changed.`
         );
       }
-      const policyCheck = checkAutomationPolicy({ device_id: deviceId, action, params }, registry);
+      const policyCheck = policy({ device_id: deviceId, action, params }, registry);
       if (!policyCheck.allowed) {
         return errorResult(
           `Blocked by automation policy (${policyCheck.rule}): ${policyCheck.reason} Nothing changed.`
@@ -301,6 +316,7 @@ function registerMutatingTools(server, { registry, proposals, audit }) {
     'compose_scene',
     {
       title: 'Propose a multi-device scene for the person to review',
+      annotations: PROPOSES,
       description:
         'Propose a named, multi-device scene (e.g. "Good Night": lock the front door, ' +
         'turn off the lights, set the thermostat) as one structured proposal covering ' +
@@ -325,7 +341,7 @@ function registerMutatingTools(server, { registry, proposals, audit }) {
       },
     },
     async ({ scene_name: sceneName, actions }) => {
-      const policyChecks = actions.map((a) => checkAutomationPolicy(a, registry));
+      const policyChecks = actions.map((a) => policy(a, registry));
       const proposal = proposals.createScene({ sceneName, actions, policyChecks });
       return okResult(proposal);
     }
@@ -335,6 +351,7 @@ function registerMutatingTools(server, { registry, proposals, audit }) {
     'execute_scene',
     {
       title: 'Execute a previously proposed scene, if the person confirmed it',
+      annotations: EXECUTES,
       description:
         'Execute every action in a proposed scene, in order, but ONLY when ' +
         '`confirmation_id` is a one-time token the person’s Confirm control already ' +
@@ -385,7 +402,7 @@ function registerMutatingTools(server, { registry, proposals, audit }) {
       proposals.markExecuted(proposal.proposal_id);
       const results = [];
       for (const step of proposal.actions) {
-        const policyCheck = checkAutomationPolicy(step, registry);
+        const policyCheck = policy(step, registry);
         if (!policyCheck.allowed) {
           results.push({ ...step, result: 'blocked', reason: policyCheck.reason });
           break;
