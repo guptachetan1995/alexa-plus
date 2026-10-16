@@ -473,7 +473,7 @@ real command output — no line is ticked on assertion alone.
 | 16 | No secrets, API keys, or personal information in the repository | **Done** | The MCP tools and the planners read no credential, and there is no `.env`. The two credentials in play are both read from the process environment at run time and neither is stored in the repository: `OWNER_KEY` (the server and the client read it; the tests use fixed test-only strings) and, under `PLANNER=bedrock`, the AWS credential `client/server.js` resolves. A scan of every tracked file for credential-shaped values (`AKIA` access key ids, `-----BEGIN … PRIVATE KEY`, `aws_secret_access_key`, `ghp_`/`xox`/`sk-` tokens) and for `.env`, `.pem` or `credentials` files matches only this row's own list of the patterns. |
 | 17 | Verify that the project passes its own test suite before submission | **Done** | From a fresh copy: `bash verify.sh` runs server `npm run lint` (clean), server `npm test` (**47 passed, 7 suites**) and client `npm test` (**25 passed**), and ends with `alexa-plus: all checks passed.` |
 
-**Summary: 14 lines done (3 with a re-cut video rendered, not yet uploaded), 1 taken by a documented
+**Summary: 14 lines done (3 with the re-cut video, uploaded 17 Oct 2026), 1 taken by a documented
 alternative route (7), and 2 honest gaps stated as limitations rather than claimed (9
 latency from distant testers, 10 OAuth).**
 
@@ -490,17 +490,19 @@ MCP URL and the README's
 holds the two architecture diagrams plus five captioned frames of the published video
 (rendered 2026-09-10).
 
-### Devpost fields to update (prepared 2026-09-28, not yet pasted)
+### Devpost fields, refreshed 2026-10-17
 
-A logged-out look at the Devpost page on 7 October 2026 (recorded here, not repeated by the
-re-cut render) found it still carries the 2026-09-11 submission: it embeds the old 2:25
-video (`14YZX4JtDjY`), says the kitchen plug proposal was declined, gives an older, lower
-test count than the repository's 47 server and 25 client tests, and has none of the
-2026-09-28 additions below (the AWS feedback, the friction log, the owner key). Every row below fixes one of
-those and is still waiting to be pasted.
+On 17 October 2026 the Devpost page was brought in line with this document: the re-cut video
+(`VkIw_HWnEZE`) replaced the 2:25 one, the story, elevator pitch, thumbnail, AWS Builder
+write-up, Open Source description, feature requests and the five product-feedback answers (now
+covering all 14 tools, generated from [`feedback.md`](feedback.md) one question at a time) were
+replaced, the five frames of the old video were replaced by seven frames of the re-cut with the
+captions below, and a logged-out fetch of the public page showed the new video, no kitchen plug
+and no "41 tests". The friction-log field links to
+[`friction-log.md`](friction-log.md) on GitHub, so it follows the repository. The table below
+lists what each field holds.
 
-Each field's exact text is in this document; paste in this order, after the repository is
-republished so every link resolves:
+Each field's exact text is in this document:
 
 | Field | Source | Change |
 |---|---|---|
