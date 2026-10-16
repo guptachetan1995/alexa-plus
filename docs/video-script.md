@@ -24,6 +24,17 @@ the timing budget. Paths and commands below are relative to the root of this rep
   transcript exists, the Bedrock planner (beat 10).
 - **The narration names who it is for** and no longer speaks a test count; the terminal
   beat shows whatever count `npm test` really prints at render time.
+- **Beat 9 is read after everything it talks about.** The first draft of this script
+  (and of the render tooling) captured the lock's state before the browser demo, so
+  "still locked" was true by construction. The render now records the browser beats
+  first, then runs beats 7, 8 and 9 against the same server in the order they appear,
+  and refuses to finish if the lock's state after them differs from the state read
+  before the take. The old line "with the same timestamp as before" is gone because
+  nothing on screen shows an earlier timestamp.
+- **Beats 3, 4 and 5 are split into stills** so each sentence has its own state on
+  screen: the Confirm click lands as the narration says "Execute action runs", the
+  thermostat read is in view while it is named, and the Decline click lands right after
+  "This time, decline."
 
 ## Target runtime
 
@@ -82,7 +93,7 @@ read by a text-to-speech voice.
 | 6 | 1:10.8 | 11.0 s | Terminal: `npx -y @modelcontextprotocol/inspector --cli http://16.176.3.215:3000/mcp --method tools/list \| jq -r '.tools[].name'` and the eight names | — | "The same server runs on AWS EC2 in Sydney. Any MCP client can list its eight tools; this is the MCP Inspector." |
 | 7 | 1:21.8 | 13.0 s | Terminal: the Inspector calling `execute_action` with `device_id=dev_front_door_lock_1`, `action=unlock` and no `confirmation_id` against the local server; `"isError": true` and the reason | — | "Now skip the person. Call execute action to unlock the door with no confirmation id. Refused, with the reason, and nothing changed." |
 | 8 | 1:34.8 | 10.0 s | Terminal: `curl -s -w '\nHTTP %{http_code}\n' -X POST http://127.0.0.1:<server-port>/proposals/<a pending proposal_id>/approve` with no key; the `Only the home owner…` error and `HTTP 401` | — | "And the approve route itself turns away anyone without the owner's key: four oh one, nothing minted." |
-| 9 | 1:44.8 | 8.0 s | Terminal: the Inspector calling `get_device_state` for the lock: `"locked": true`, `"last_updated": "2026-09-08T08:00:00Z"` | — | "The door is still locked, with the same timestamp as before." |
+| 9 | 1:44.8 | 8.0 s | Terminal: the Inspector calling `get_device_state` for the lock, run after the browser take and after beats 7 and 8: `"locked": true`, `"last_updated": "2026-09-08T08:00:00Z"` | — | "After all of that, the door is still locked, and nothing about it has changed." |
 | 10 | 1:52.8 | 16.0 s | *Only with a real transcript.* Terminal: the output of `node bedrock-cli.js` — `[tool]` lines for the calls Amazon Nova Micro chose, `[gate]` lines for each Confirm/Decline typed by the person | — | "With the Bedrock planner, Amazon Nova Micro picks the tools through the Converse API, and every change it proposes still waits for the person at the same gate." |
 | 11 | 1:52.8 (2:08.8 with 10) | 9.0 s | Terminal: `npm test` from the repository root, ending on the Jest summary | — | "The server's test suite covers every one of these refusals. One button the agent can never press for itself: Confirm." |
 | 12 | 2:01.8 (2:17.8 with 10) | 6.0 s | Terminal-style card: "Smart Home Agent", the repository, the live MCP URL, the Devpost page | — | "Links are in the description." |
@@ -95,8 +106,9 @@ narration says (eight tool names; `isError` with the confirmation reason; `HTTP 
 lock still `locked` with the seed timestamp; a passing Jest summary).
 
 - Beat 6 runs against the live EC2 server, read-only.
-- Beat 8 needs a pending proposal id; one is created on the local server with
-  `propose_action` before the take (proposing changes no device), and is never approved.
+- Beats 7, 8 and 9 are captured on the local server after the browser take, in that order.
+  Beat 8 needs a pending proposal id; one is created with `propose_action` just before it
+  (proposing changes no device), and is never approved.
 - Beat 10 is the one beat that cannot be produced here. It needs a real run of
   `client/bedrock-cli.js` with AWS credentials, which costs a few metered Converse calls,
   so it is the owner's to record (for example in AWS CloudShell, where the credentials
@@ -118,11 +130,34 @@ lock still `locked` with the seed timestamp; a passing Jest summary).
 
 ## Render order
 
-1. The EC2 server is redeployed with the owner key first. Beat 6 says the server on EC2
-   is this same server, so the renderer (the video tooling is kept outside this
-   repository) refuses a real render while the live host's key-less approve answers
-   anything but `401`.
-2. Then one render, with the beat 10 transcript passed in if the owner recorded one.
+1. The EC2 server runs the owner-key build. Beat 6 says the server on EC2 is this same
+   server, so the renderer (the video tooling is kept outside this repository) refuses a
+   real render while the live host's key-less approve answers anything but `401`, or
+   while any of its eight tools lacks annotations. Both held on 2026-10-06 19:02 UTC
+   (`deploy.md`, "Which build it runs").
+2. Then one render, with the beat 10 transcript passed in if the owner recorded one. It
+   starts a fresh server and client on two unused ports, records the browser beats (1-5)
+   as a first take, captures beats 7-9 from real commands against the same server, records
+   the terminal beats (6-12) as a second take, joins the two, narrates and muxes, and
+   checks that the raw and final files run exactly as long as the shot list adds up to.
+
+## What each narrated claim rests on
+
+Nothing is spoken that the screen or the code does not back. "Test" names are in
+`server/test/`.
+
+| Beat | Claim | What backs it |
+|---|---|---|
+| 1 | It can see every device but changes nothing until the owner says yes. | The read tools never mutate (`tools-call.test.js`, the no-mutation check); `execute_action` refuses without a minted token (`execute-refusals.test.js`). |
+| 2 | It reads the devices, checks policy, proposes, then stops; the tiles have not moved. | On screen: `list_devices`, `get_device_state`, `check_automation_policy`, `propose_action` panels, the Confirmation needed panel, tiles at their seeded values. |
+| 3 | One click mints a one-time token, only the owner's Confirm can mint it; the light's tile moves to 50%. | `ProposalStore.approve()` is the only code that sets a token and its only caller is the key-gated route (`proposals.js`, `server.js`); replay is refused (`execute-refusals.test.js`). On screen: the `execute_action` panel and the outlined tile reading On · 50%. |
+| 4 | It checks the thermostat, then the user asks to unlock the front door; same gate. | On screen: the thermostat read, "Also unlock the front door.", the second Confirmation needed panel. |
+| 5 | Declined: never executed, the door's tile still says Locked, the audit log holds one entry, the light. | On screen: Declined, the lock's tile, and `read_audit_log` reading "1 entry: set_brightness on dev_living_room_light_1 by user". The render also reads the audit log from the server and fails unless it is exactly that one entry. |
+| 6 | The same server runs on AWS EC2 in Sydney; any MCP client can list its eight tools. | On screen: the Inspector's output against `http://16.176.3.215:3000/mcp` (`ap-southeast-2`). Before rendering: the host's key-less approve answered `401` and all eight tools carry annotations, so it is the owner-key build, not the 2026-09-11 one. |
+| 7 | With no confirmation id the call is refused with the reason and nothing changes. | On screen: `"isError": true` and the refusal text (`execute-refusals.test.js`, "no confirmation_id at all is refused"). "Nothing changed" is beat 9. |
+| 8 | The approve route turns away anyone without the owner's key: 401, nothing minted. | On screen: `HTTP 401` and "Nothing was minted or changed." (`execute-refusals.test.js`, "approving without the owner key"). |
+| 9 | The door is still locked and nothing about it has changed. | On screen: `"locked": true`. Not on screen: the render compares this read with one taken before the browser take, field for field, `last_updated` included, and fails if they differ. |
+| 11 | The test suite covers every one of these refusals. | The two refusals demonstrated (no confirmation id, no owner key) each have a named test in `execute-refusals.test.js`; the beat shows the real Jest summary. |
 
 ## Timing contingency
 
@@ -145,14 +180,20 @@ says yes", and beat 3 can drop ": the first moment anything changed".
 - A real Alexa device. The client is a simulated Alexa+ surface, and beat 1 says "for
   Alexa Plus", not "on".
 
-## Dry-run verification (2026-09-28)
+## Dry-run verification (2026-09-28) and render (2026-10-07)
 
 The terminal beats were captured once against a freshly started server on two unused
-ports and against the live EC2 server: the Inspector listed all eight tools from
-`http://16.176.3.215:3000/mcp`; the token-less `execute_action` returned `"isError": true`
-with the reason quoted in the README; the key-less approve returned `HTTP 401` with the
-`Only the home owner…` error; `get_device_state` showed the lock `locked` with
-`last_updated` `2026-09-08T08:00:00Z`; and `npm test` printed 47 passing tests in 7
-suites. The browser states of beats 2–5 were reached in headless Chromium against the
-same kind of fresh pair (the README's screenshot is the beat 4 state). The video itself
-has not been rendered from this version yet.
+ports and against the live EC2 server on 2026-09-28: the Inspector listed all eight tools
+from `http://16.176.3.215:3000/mcp`; the token-less `execute_action` returned
+`"isError": true` with the reason quoted in the README; the key-less approve returned
+`HTTP 401` with the `Only the home owner…` error; `get_device_state` showed the lock
+`locked` with `last_updated` `2026-09-08T08:00:00Z`; and `npm test` printed 47 passing
+tests in 7 suites. The browser states of beats 2–5 were reached in headless Chromium
+against the same kind of fresh pair (the README's screenshot is the beat 4 state).
+
+The re-cut was rendered on 2026-10-07 (IST), without beat 10 (no real transcript exists):
+**127.8 s (2:07.8), 1920 × 1080, 25 fps, H.264 and AAC**, 12 beats, no narration clipped
+(the longest line fills 92% of its beat). Its terminal beats show 47 tests in 7 suites
+from a fresh `npm test`, and the live host answered `401` and listed eight annotated
+tools right before the render. The render is not uploaded; once it is uploaded as Public,
+its link replaces the old one in the README, `submission.md` and Devpost.

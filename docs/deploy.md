@@ -22,15 +22,30 @@ which refused every request to the instance's public IP with `HTTP 403 Invalid H
 that allowlist (see [Privacy and security notes](../README.md#privacy-and-security-notes)
 in the README for the tradeoff).
 
-**Which build it runs.** The instance runs the code as it was on 2026-09-11. Everything
-added since — the owner key on `approve`/`reject`, the `/proposals/*` origin allowlist,
-and the tool annotations — reaches the public host only when it is redeployed with the
-steps below. Until then its approve route is unauthenticated.
+**Which build it runs.** The instance was first deployed on 2026-09-11, before the owner
+key on `approve`/`reject`, the `/proposals/*` origin allowlist and the tool annotations
+existed. It now runs a build that has all three. Checked on 2026-10-06 19:02 UTC (7 October
+00:32 IST) with the probe in step 7 below, a key-less approve call for a proposal that does
+not exist:
+
+```
+$ curl -s -w '\nHTTP %{http_code}\n' -X POST http://16.176.3.215:3000/proposals/prop_check/approve
+{"error":"Only the home owner can approve or decline a proposal: send the owner key as \"Authorization: Bearer <key>\". Nothing was minted or changed."}
+HTTP 401
+```
+
+The old build answers `409` to the same call. An Inspector `tools/list` against the host,
+run at about 19:13 UTC the same day, returned all 8 tools, each with `annotations`. When
+the redeploy happened is not recorded here. The probe tells the two builds apart; it does
+not prove the instance runs this repository's latest commit, and the steps below are how
+to get it there.
 
 ## Redeploying the EC2 server with the owner key
 
 Done by the owner, in the AWS console, after the new code is in the public repository.
-Nothing here creates a resource or costs anything beyond the running instance.
+Nothing here creates a resource or costs anything beyond the running instance. The host
+already runs an owner-key build (above); these steps are for the next redeploy, and for
+a fresh instance.
 
 1. **Open a shell on the instance.** EC2 console, region `ap-southeast-2` → Instances →
    the instance whose public IPv4 is `16.176.3.215` → **Connect** → *EC2 Instance
@@ -106,9 +121,10 @@ Nothing here creates a resource or costs anything beyond the running instance.
    # expect the 8 tools, each now with "annotations"
    ```
 
-Once step 7 shows `401`, the README's "The live server runs the build from before the
-owner key" limitation is no longer true and comes out, and this section's "Which build it
-runs" paragraph changes to say so.
+Step 7 answered `401` on 2026-10-06 19:02 UTC, so the README no longer lists "the live
+server runs the build from before the owner key" as a limitation. If a later redeploy
+ever goes back to an older build, the `409` answer is the sign, and that limitation
+belongs back in the README.
 
 ## HTTPS without a new account (not done)
 
@@ -385,7 +401,7 @@ Runner's simpler ECR-image deploy model, not something hidden from the submissio
   that changes once a real `/health` route exists.
 - **No user auth.** OAuth 2.1 with PKCE (`auth.js`) was deliberately deferred; the MCP
   endpoint is reachable by anyone who has the URL, and the only credential is the owner
-  key on `approve`/`reject` (once redeployed, above).
+  key on `approve`/`reject`, which the public host enforces (see above).
 - **This runbook only deploys the MCP server, not the client.** `PLANNER=bedrock`'s AWS
   Bedrock call lives in `client/server.js` (a second, separate Node process from the one
   this document deploys) — `iam-policy.json` above has no

@@ -6,9 +6,9 @@ Confirm can execute, plus a simulated Alexa+ web client that talks to it over th
 Built for the **Build, Ship, Shape: Amazon Developer Hackathon**, Alexa+ track.
 
 - Devpost: https://devpost.com/software/smart-home-agent
-- Demo video: https://www.youtube.com/watch?v=14YZX4JtDjY
+- Demo video: https://youtu.be/VkIw_HWnEZE
 - Live MCP server: `http://16.176.3.215:3000/mcp` (AWS EC2, `ap-southeast-2`; see
-  [Known limitations](#known-limitations) for latency and for which build it runs)
+  [Known limitations](#known-limitations) for latency)
 
 <img src="docs/screenshot-confirm.png" alt="The simulated client: device tiles at the top show the living room light at 50% after a confirmed change and the front door still locked; below, the agent's proposal to unlock the front door waits on a Confirmation needed panel with Confirm and Decline buttons." width="720">
 
@@ -447,12 +447,10 @@ Stated plainly, because a submission that hides these is worse than one that nam
   from within Australia/APAC would see this comfortably under 500 ms; a US/EU tester
   will see the same geography this measurement did. The endpoint is plain HTTP, not
   HTTPS. [docs/deploy.md](docs/deploy.md) says what is deployed and keeps the App Runner
-  artifacts and runbook that could not be used on this account.
-- **The live server runs the build from before the owner key.** It was deployed on
-  2026-09-11; the owner key on `approve`/`reject` came later. Until the instance is
-  redeployed ([docs/deploy.md](docs/deploy.md) has the steps), anyone who knows a pending
-  proposal's id can approve it on the public host, and its tools carry no annotations.
-  The MCP tool surface itself has never been able to reach the approve route.
+  artifacts and runbook that could not be used on this account. The public host enforces
+  the owner key: on 7 October 2026 (IST) an approve call without a key answered `401`, and its tools
+  list carries annotations (details in [docs/deploy.md](docs/deploy.md#what-is-actually-live)).
+  So nobody who only has the URL can approve a proposal there; they can propose and read.
 - **One owner key, not user accounts.** The owner routes check a single shared secret.
   There is no per-person identity, so the audit log's `actor` is `"user"` for every
   confirmed action, whoever clicked. OAuth 2.1 with PKCE is not implemented (an `auth.js`

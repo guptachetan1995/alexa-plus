@@ -17,10 +17,9 @@ line is answered in [Submission checklist](#submission-checklist--every-line-wit
 **Smart Home Agent** (the Devpost title; unchanged).
 
 Short tagline (Devpost "elevator pitch", 200 char max). **Paste to replace the current
-one once the EC2 host runs the owner-key build** (the `curl` in
-[`deploy.md`](deploy.md#redeploying-the-ec2-server-with-the-owner-key) step 7 answers
-`401`); until then the live host's approve route does not check the owner's key, and the
-pitch has no room for the caveat the story carries:
+one.** The pitch says only the owner's Confirm can mint the token, which is true of the
+live host: the probe in [`deploy.md`](deploy.md#what-is-actually-live) answered `401` on
+2026-10-06 19:02 UTC (7 October IST):
 
 > An Alexa+ MCP server for the smart home where every device action is proposed, never
 > taken. Only the owner's Confirm can mint the one-time token that lets the agent execute.
@@ -35,16 +34,14 @@ pitch has no room for the caveat the story carries:
 explaining the project functionality, use case, and any AWS services/technologies used".*
 
 **Paste everything between the two rules below, replacing the whole current story** (its
-headings are the story's own `##` headings). The one-line block quote marked "until the
-redeploy" goes in only if the EC2 host has not yet been redeployed with the owner key —
-check with the `curl` in [`deploy.md`](deploy.md#redeploying-the-ec2-server-with-the-owner-key)
-step 7: `409` means old build (include the line), `401` means redeployed (leave it out).
+headings are the story's own `##` headings). The live host runs the owner-key build (the
+probe in [`deploy.md`](deploy.md#what-is-actually-live) answered `401`), so the story
+carries no caveat about an old build. If the host is ever put back on an older build (the
+same probe answers `409`), add a line saying so under the first paragraph.
 
 ---
 
 Source code (MIT): [github.com/guptachetan1995/alexa-plus](https://github.com/guptachetan1995/alexa-plus). Live MCP server: `http://16.176.3.215:3000/mcp` on AWS EC2. It speaks MCP over Streamable HTTP, so a browser tab shows HTTP 400; connect an MCP client instead, for example `npx -y @modelcontextprotocol/inspector --cli http://16.176.3.215:3000/mcp --method tools/list` ([details](https://github.com/guptachetan1995/alexa-plus#inspecting-with-an-off-the-shelf-mcp-client)).
-
-> Until the redeploy: the public host still runs the 2026-09-11 build, whose approve route predates the owner key; the redeploy steps are in [docs/deploy.md](https://github.com/guptachetan1995/alexa-plus/blob/main/docs/deploy.md#redeploying-the-ec2-server-with-the-owner-key).
 
 ## Inspiration
 
@@ -216,10 +213,9 @@ The live rules ask for four specific fields:
 > pattern generalizes past smart homes to any agent that touches the physical or
 > financial world, and the whole thing is MIT-licensed and runs offline with no API key.
 
-**Paste the description above to replace the current one**, once the EC2 host runs the
-owner-key build (the `curl` in [`deploy.md`](deploy.md#redeploying-the-ec2-server-with-the-owner-key)
-step 7 answers `401`): its second paragraph now says the minting route requires the
-owner's key, which the live host does not enforce until then. Its third paragraph no
+**Paste the description above to replace the current one.** Its second paragraph says the
+minting route requires the owner's key, which the live host enforces (the probe in
+[`deploy.md`](deploy.md#what-is-actually-live) answered `401`). Its third paragraph no
 longer characterizes other agent demos.
 
 The repository is public, and GitHub detects its `LICENSE` as MIT.
@@ -336,25 +332,65 @@ The build went in this order:
    client's device tiles, collapsed JSON, and the front-door unlock as the declined demo
    action; `client/bedrock-cli.js`; three AWS friction-log entries and four AWS feedback
    sections; the redeploy and HTTPS notes in `deploy.md`.
+9. 2026-10-07: documentation and the re-cut demo video only. No server or client code
+   changed. `deploy.md` and the README record that the live host answers `401` to a
+   key-less approve and lists annotated tools, and this write-up's test counts, declined
+   action and paste instructions were checked against the repository and the live host.
 
 ---
 
 ## Demo video
 
-**https://www.youtube.com/watch?v=14YZX4JtDjY** (public on YouTube, embedded on the Devpost
-project page).
+**https://youtu.be/VkIw_HWnEZE** (public on YouTube, 2:07.8; uploaded 2026-10-17, checked logged
+out the same day: not unlisted, status OK, 128 s).
 
-That video (2:25, rendered 2026-09-10 and submitted 2026-09-11) shows the demo as it was
-then: the kitchen plug as the declined action, and a subtitle that has since changed. [`video-script.md`](video-script.md) is now
-the script for its replacement — the front-door unlock declined, the device tiles, the
-live EC2 endpoint, the owner-key refusal, and optionally a real Bedrock run — **2:08
-without the Bedrock beat, 2:24 with it, 2:42 hard ceiling**. Once it is rendered and
-uploaded as Public, its link replaces the one above here, in the README and on Devpost.
-Both show all four required beats — the conversation, live tool calls, a confirmed
-action that executes, and a refused one that does not.
+It is the re-cut rendered on 2026-10-07 from [`video-script.md`](video-script.md): **2:07.8
+(127.8 s), 1920 x 1080, 12 beats**, with the front-door unlock declined, the device tiles,
+the live EC2 endpoint, the refusal with no confirmation id, the owner-key refusal and the
+lock read again afterwards, and the server's test suite. It has no Bedrock beat, because
+no real `PLANNER=bedrock` transcript exists, and the script never stands one in. It
+replaces the 2:25 video of 2026-09-10 (`14YZX4JtDjY`, which showed the kitchen plug as the
+declined action and a subtitle that has since changed). The video shows all four required
+beats: the conversation, live tool calls, a confirmed action that executes, and a refused one
+that does not.
 
 The live rules say **"less than three (3) minutes"** and that judges are not required to
-watch beyond three minutes. The script is comfortably inside that.
+watch beyond three minutes. The re-cut is 52 seconds inside that.
+
+### YouTube upload details (re-cut)
+
+Everything below is sourced from this document, not invented for the upload.
+
+- **Title:** Smart Home Agent: an Alexa+ MCP server where only the owner's Confirm executes
+- **Visibility:** Public (Devpost requires it; not Unlisted, not Private)
+- **Category:** Science & Technology. **Audience:** not made for kids.
+- **Tags:** model context protocol, MCP, Alexa+, Alexa Plus, AWS, Amazon Bedrock, smart home, AI agent, human in the loop, Amazon Developer Hackathon, Node.js
+- **Description** (paste as is):
+
+```
+An Alexa+ MCP server for the smart home where every device action is proposed, never taken. Only the owner's Confirm can mint the one-time token that lets the agent execute.
+
+Built for the Build, Ship, Shape: Amazon Developer Hackathon, Alexa+ track. The client is a simulated Alexa+ surface; every tool call in it is a real call to the real server.
+
+0:00 The idea
+0:14 The agent proposes dimming the light and stops
+0:30 The owner confirms: the token is minted, the light moves to 50%
+0:46 The agent proposes unlocking the front door
+0:57 The owner declines: the door stays locked, the audit log holds one entry
+1:11 The same server on AWS EC2 (Sydney): list its eight tools with the MCP Inspector
+1:22 execute_action with no confirmation id: refused
+1:35 The approve route without the owner's key: HTTP 401
+1:45 The door is still locked
+1:53 The server's test suite
+2:02 Links
+
+Source code (MIT): https://github.com/guptachetan1995/alexa-plus
+Live MCP server (AWS EC2, ap-southeast-2): http://16.176.3.215:3000/mcp
+Devpost: https://devpost.com/software/smart-home-agent
+```
+
+The video's own chapter times are those of the shot list in
+[`video-script.md`](video-script.md) without the Bedrock beat.
 
 ---
 
@@ -390,7 +426,7 @@ they differ, the detailed rules are the reading this entry follows.
 
 | Topic | Submission checklist says | Detailed rules say | Effect |
 |---|---|---|---|
-| Video length | "approximately 3 minutes" | "less than three (3) minutes" (hard max) | None — the published video is 2:25, and the re-cut script runs 2:08 (2:24 with the Bedrock beat) with a 2:42 ceiling, inside both readings. |
+| Video length | "approximately 3 minutes" | "less than three (3) minutes" (hard max) | None — the published video is 2:25, and the re-cut rendered on 2026-10-07 is 2:07.8 (a Bedrock beat would make it 2:24; ceiling 2:42), inside both readings. |
 | Open Source fields | not enumerated | contribution URL, repo URL, GitHub username, description | All four supplied above. |
 | Feature requests | not mentioned | optional field with a priority rating | Supplied above. |
 | Friction log | not mentioned | optional, up to a 10% judging bonus | `friction-log.md` supplied. |
@@ -411,7 +447,7 @@ real command output — no line is ticked on assertion alone.
 |---|---|---|---|
 | 1 | Text description explaining functionality, use case, and any AWS services/technologies used | **Done** | [Text description](#text-description) above, including [AWS services used](#aws-services-used): the Bedrock planner and EC2 hosting, both verified live on 2026-09-11. |
 | 2 | Public GitHub repository with source code and open-source license | **Done** | https://github.com/guptachetan1995/alexa-plus is public; its root `LICENSE` is MIT and GitHub detects it as MIT. `verify.sh` asserts `LICENSE` begins `MIT License` and names a copyright holder. |
-| 3 | Demo video approximately 3 minutes, public on YouTube/Vimeo | **Done; re-cut scripted** | https://www.youtube.com/watch?v=14YZX4JtDjY (2:25, Public). [`video-script.md`](video-script.md) is the script for its replacement (2:08, or 2:24 with the Bedrock beat; 2:42 ceiling), not yet rendered. |
+| 3 | Demo video approximately 3 minutes, public on YouTube/Vimeo | **Done** | https://youtu.be/VkIw_HWnEZE (2:07.8, Public; uploaded 2026-10-17), rendered from [`video-script.md`](video-script.md). |
 | 4 | Product feedback on all tools and APIs used (graded) | **Done** | [`feedback.md`](feedback.md) — 14 tools, APIs and services, each with what-for / worked / needs-work / onboarding / build-again, including Amazon Bedrock (Converse), `@aws-sdk/client-bedrock-runtime`, AWS EC2 and AWS App Runner, and an opening paragraph on which AWS services are used and how. |
 | 5 | Track and mini-challenge selections | **Done** | Alexa+ track; Open Source and AWS Builder mini-challenges, with the four required Open Source fields and the AWS Builder write-up [above](#mini-challenge-selections). |
 | 6 | Documentation of any pre-hackathon work | **Done** | [Pre-existing project disclosure](#pre-existing-project-disclosure) — none, with the build dates and what this repository's history can and cannot show. |
@@ -421,7 +457,7 @@ real command output — no line is ticked on assertion alone.
 | # | Checklist line | Status | Evidence |
 |---|---|---|---|
 | 7 | Working Alexa+ integration using the Alexa+ MCP Toolkit or Agent Skills | **Alternative route** | Neither the Toolkit nor an Agent Skill is used. Instead: a self-hosted MCP server on spec `2025-11-25` over Streamable HTTP (`server/src/server.js`) plus a simulated Alexa+ web client (`client/`) — the alternative the live rules allow for this track. Stated plainly, not claimed as Toolkit usage. |
-| 8 | Functional demo video showing the MCP server responding and tools being invoked | **Done** | The published [demo video](#demo-video) shows live tool calls in the client, then a refusal called directly with the MCP Inspector CLI. The scripted re-cut ([`video-script.md`](video-script.md)) adds `tools/list` against the live EC2 endpoint and the owner-key refusal. |
+| 8 | Functional demo video showing the MCP server responding and tools being invoked | **Done** | The published [demo video](#demo-video) shows live tool calls in the client, then a refusal called directly with the MCP Inspector CLI. The re-cut ([`video-script.md`](video-script.md)) adds `tools/list` against the live EC2 endpoint and the owner-key refusal. |
 | 9 | MCP server accessible via remote URL with response latency under 500 ms | **Deployed and reachable; latency depends on tester location** | Live at `http://16.176.3.215:3000/mcp` (AWS EC2, `ap-southeast-2`) — verified with a real `initialize` handshake returning `HTTP 200`. Loopback `tools/call` round-trip is still 0.62–1.17 ms (unchanged — the server itself adds no measurable latency). End-to-end latency measured from the deploying session's US-based test origin is 570–700 ms, over the 500 ms line; a `curl` timing breakdown shows ~290 ms of that is the TCP connect round trip alone, i.e. real network distance to `ap-southeast-2` rather than server processing. A tester within Australia/APAC would measure comfortably under 500 ms. |
 | 10 | OAuth 2.1 with PKCE (if server requires authentication) | **Not applicable as written; a real gap for onboarding** | The MCP endpoint requires no authentication, so the conditional does not trigger for the agent's surface; the owner-only approve/reject routes use a static owner key, not an OAuth flow. An `auth.js` for OAuth 2.1 + PKCE was planned and deliberately deferred. Amazon's Alexa+ onboarding docs do require OAuth 2.1 + PKCE (S256) for a real add-on — documented as a known limitation, not papered over. |
 | 11 | Documentation of how to onboard the MCP server to Alexa+ | **Done** | [`architecture.md` §4](architecture.md#4-onboarding-this-mcp-server-to-alexa) — every documented requirement with this server's actual status against it, sourced from Amazon's MCP QuickStart, MCP Toolkit overview, and account-linking pages. |
@@ -437,7 +473,7 @@ real command output — no line is ticked on assertion alone.
 | 16 | No secrets, API keys, or personal information in the repository | **Done** | The MCP tools and the planners read no credential, and there is no `.env`. The two credentials in play are both read from the process environment at run time and neither is stored in the repository: `OWNER_KEY` (the server and the client read it; the tests use fixed test-only strings) and, under `PLANNER=bedrock`, the AWS credential `client/server.js` resolves. A scan of every tracked file for credential-shaped values (`AKIA` access key ids, `-----BEGIN … PRIVATE KEY`, `aws_secret_access_key`, `ghp_`/`xox`/`sk-` tokens) and for `.env`, `.pem` or `credentials` files matches only this row's own list of the patterns. |
 | 17 | Verify that the project passes its own test suite before submission | **Done** | From a fresh copy: `bash verify.sh` runs server `npm run lint` (clean), server `npm test` (**47 passed, 7 suites**) and client `npm test` (**25 passed**), and ends with `alexa-plus: all checks passed.` |
 
-**Summary: 14 lines done (3 with a re-cut video scripted), 1 taken by a documented
+**Summary: 14 lines done (3 with a re-cut video rendered, not yet uploaded), 1 taken by a documented
 alternative route (7), and 2 honest gaps stated as limitations rather than claimed (9
 latency from distant testers, 10 OAuth).**
 
@@ -456,21 +492,28 @@ holds the two architecture diagrams plus five captioned frames of the published 
 
 ### Devpost fields to update (prepared 2026-09-28, not yet pasted)
 
+A logged-out look at the Devpost page on 7 October 2026 (recorded here, not repeated by the
+re-cut render) found it still carries the 2026-09-11 submission: it embeds the old 2:25
+video (`14YZX4JtDjY`), says the kitchen plug proposal was declined, gives an older, lower
+test count than the repository's 47 server and 25 client tests, and has none of the
+2026-09-28 additions below (the AWS feedback, the friction log, the owner key). Every row below fixes one of
+those and is still waiting to be pasted.
+
 Each field's exact text is in this document; paste in this order, after the repository is
 republished so every link resolves:
 
 | Field | Source | Change |
 |---|---|---|
-| Elevator pitch | [Project name](#project-name) | "a person's Confirm button" → "the owner's Confirm". Paste only once `deploy.md` step 7 answers `401`. |
-| About the project (story) | [Text description](#text-description) | Whole story replaced: authority framing and audience, the owner key, the front-door demo, the corrected test claim, AWS challenges, App Runner. Include the "until the redeploy" line only if the EC2 check still answers `409`. |
+| Elevator pitch | [Project name](#project-name) | "a person's Confirm button" → "the owner's Confirm". True of the live host (the probe answered `401`). |
+| About the project (story) | [Text description](#text-description) | Whole story replaced: authority framing and audience, the owner key, the front-door demo, the corrected test claim, AWS challenges, App Runner. The test claim is 47 server and 25 client tests, as `npm test` and `cd client && npm test` print them. |
 | Product feedback | [`feedback.md`](feedback.md), whole file | Adds Bedrock, the Bedrock SDK, EC2 and App Runner, and the AWS-services paragraph. |
 | Friction log | [`friction-log.md`](friction-log.md), whole file | Adds entries 5–7 (AWS). |
 | Feature requests | [Feature requests](#feature-requests) | Adds requests 5–7. |
 | AWS Builder: which AWS services and how | [AWS Builder field](#aws-builder-mini-challenge--required-field) | Adds where the Bedrock call runs, App Runner, and the unrecorded real-model run. |
-| Open Source: description of work | [Open Source fields](#open-source-mini-challenge--required-fields) | Second paragraph mentions the owner key; third no longer characterizes other agent demos. Paste only once `deploy.md` step 7 answers `401`. |
+| Open Source: description of work | [Open Source fields](#open-source-mini-challenge--required-fields) | Second paragraph mentions the owner key; third no longer characterizes other agent demos. |
 | Thumbnail | [`devpost-thumbnail.png`](devpost-thumbnail.png) (1500×1000, 3:2): "Smart Home Agent", "The agent proposes. Only your Confirm can execute.", and a real crop of the front-door Confirmation panel | Replaces the 333×222 crop of proposal JSON. |
-| Gallery | [`screenshot-confirm.png`](screenshot-confirm.png) now; frames of the re-cut once it is rendered | Add the screenshot with the caption below. Replace the published video's five frames only when the re-cut replaces the video, so frames and video agree. |
-| Video link | [Demo video](#demo-video) | Only after the re-cut is uploaded as Public. |
+| Gallery | [`screenshot-confirm.png`](screenshot-confirm.png) now; frames of the re-cut (rendered 2026-10-07) with the captions below | Add the screenshot with the caption below. Replace the published video's five frames only when the re-cut replaces the video, so frames and video agree. |
+| Video link | [Demo video](#demo-video) | Only after the re-cut is uploaded as Public; its YouTube details are in [Demo video](#youtube-upload-details-re-cut). |
 
 Caption for `screenshot-confirm.png`:
 
@@ -490,5 +533,5 @@ ones:
 > 7. The server's test suite passing.
 
 Still not done, and stated as limitations rather than claimed: an HTTPS endpoint, the
-OAuth 2.1 + PKCE flow a real Alexa+ add-on would need for onboarding, redeploying the EC2
-host with the owner key, and a recorded real-model `PLANNER=bedrock` run.
+OAuth 2.1 + PKCE flow a real Alexa+ add-on would need for onboarding, and a recorded
+real-model `PLANNER=bedrock` run. The EC2 host already runs the owner-key build.
