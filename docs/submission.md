@@ -498,7 +498,7 @@ write-up, Open Source description, feature requests and the five product-feedbac
 covering all 14 tools, generated from [`feedback.md`](feedback.md) one question at a time) were
 replaced, the five frames of the old video were replaced by seven frames of the re-cut with the
 captions below, and a logged-out fetch of the public page showed the new video, no kitchen plug
-and no "41 tests". The friction-log field links to
+and none of the older, lower test count. The friction-log field links to
 [`friction-log.md`](friction-log.md) on GitHub, so it follows the repository. The table below
 lists what each field holds.
 
